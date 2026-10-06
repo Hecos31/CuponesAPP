@@ -6,7 +6,6 @@ from sqlalchemy.orm import relationship
 from app.db.session import Base
 
 def generate_uuid():
-    """Genera un UUID v4 en formato cadena."""
     return str(uuid.uuid4())
 
 class RolUsuario(str, enum.Enum):
@@ -35,7 +34,7 @@ class Usuario(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
-    rol = Column(Enum(RolUsuario), nullable=False, default=RolUsuario.CLIENTE)
+    rol = Column(Enum(RolUsuario, values_callable=lambda obj: [e.value for e in obj]), nullable=False, default=RolUsuario.CLIENTE)
     fecha_creacion = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     establecimientos = relationship("Establecimiento", back_populates="propietario")
@@ -65,7 +64,7 @@ class SolicitudEstablecimiento(Base):
     usuario_id = Column(String(36), ForeignKey("usuarios.id"), nullable=False)
     nombre_negocio = Column(String(255), nullable=False)
     documentos_url = Column(String(500), nullable=True)
-    estado = Column(Enum(EstadoSolicitud), default=EstadoSolicitud.PENDIENTE, nullable=False)
+    estado = Column(Enum(EstadoSolicitud, values_callable=lambda obj: [e.value for e in obj]), default=EstadoSolicitud.PENDIENTE, nullable=False)
     fecha_solicitud = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     usuario = relationship("Usuario", back_populates="solicitudes")
@@ -108,7 +107,7 @@ class ProgresoUsuario(Base):
     usuario_id = Column(String(36), ForeignKey("usuarios.id"), nullable=False)
     cuponera_id = Column(String(36), ForeignKey("cuponeras.id"), nullable=False)
     sellos_acumulados = Column(Integer, default=0, nullable=False)
-    estado = Column(Enum(EstadoProgreso), default=EstadoProgreso.ACTIVO, nullable=False)
+    estado = Column(Enum(EstadoProgreso, values_callable=lambda obj: [e.value for e in obj]), default=EstadoProgreso.ACTIVO, nullable=False)
     fecha_creacion = Column(DateTime, default=datetime.utcnow, nullable=False)
     fecha_actualizacion = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -123,7 +122,7 @@ class RegistroSello(Base):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     progreso_id = Column(String(36), ForeignKey("progreso_usuarios.id"), nullable=False)
     sellado_por = Column(String(36), ForeignKey("usuarios.id"), nullable=False)
-    metodo = Column(Enum(MetodoSello), nullable=False)
+    metodo = Column(Enum(MetodoSello, values_callable=lambda obj: [e.value for e in obj]), nullable=False)
     fecha_sello = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     progreso = relationship("ProgresoUsuario", back_populates="registros_sellos")
