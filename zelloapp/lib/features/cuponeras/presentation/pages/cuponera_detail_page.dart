@@ -4,7 +4,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../fidelidad/data/datasources/qr_remote_data_source.dart';
 
 class CuponeraDetailPage extends StatefulWidget {
-  const CuponeraDetailPage({Key? key}) : super(key: key);
+  const CuponeraDetailPage({super.key});
 
   @override
   State<CuponeraDetailPage> createState() => _CuponeraDetailPageState();
