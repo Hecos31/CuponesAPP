@@ -27,14 +27,10 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   String _getBaseUrl() {
-    // kIsWeb cubre depuración en Chrome / Edge
     if (kIsWeb) {
       return 'http://127.0.0.1:8000';
     }
-    // Para emulador Android en Windows (mapea al localhost de tu PC)
     return 'http://10.0.2.2:8000';
-    // NOTA: Si pruebas en un celular físico conectado por USB/Wi-Fi,
-    // cambia esta URL por la IP local de tu PC (ejemplo: 'http://192.168.1.15:8000').
   }
 
   Future<void> _handleLogin() async {
@@ -58,9 +54,6 @@ class _LoginPageState extends State<LoginPage> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        // Opcional: Aquí puedes almacenar el token recibido (data['token'])
-        // usando SharedPreferences o FlutterSecureStorage.
-
         if (mounted) {
           context.go('/novedades');
         }
@@ -198,6 +191,23 @@ class _LoginPageState extends State<LoginPage> {
                             'Iniciar Sesión',
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '¿No tienes cuenta?',
+                        style: TextStyle(color: Colors.grey[700]),
+                      ),
+                      TextButton(
+                        onPressed: () => context.push('/register'),
+                        child: const Text(
+                          'Regístrate',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
