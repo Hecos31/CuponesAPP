@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from jose import jwt, JWTError
 from app.core.config import settings
+import bcrypt
 
 ALGORITHM = "HS256"
 
@@ -20,3 +21,60 @@ def decodificar_token_cliente(token: str) -> dict | None:
         return jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError:
         return None
+    
+###############
+def generar_token_recuperacion(
+    usuario_id: str,
+    minutos_validez: int = 15
+) -> str:
+
+    expiracion = datetime.utcnow() + timedelta(
+        minutes=minutos_validez
+    )
+
+    payload = {
+        "sub": "recuperacion_password",
+        "usr": str(usuario_id),
+        "exp": expiracion
+    }
+
+    return jwt.encode(
+        payload,
+        settings.SECRET_KEY,
+        algorithm=ALGORITHM
+    )
+
+
+def decodificar_token_recuperacion(
+    token: str
+) -> dict | None:
+
+    try:
+
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+
+        if payload.get("sub") != "recuperacion_password":
+            return None
+
+        return payload
+
+    except JWTError:
+        return None
+
+
+def generar_password_hash(password: str) -> str:
+
+    password_bytes = password.encode("utf-8")
+
+    salt = bcrypt.gensalt()
+
+    hashed = bcrypt.hashpw(
+        password_bytes,
+        salt
+    )
+
+    return hashed.decode("utf-8")
