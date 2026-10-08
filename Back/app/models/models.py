@@ -14,19 +14,19 @@ class RolUsuario(str, enum.Enum):
     CLIENTE = "cliente"
 
 class EstadoSolicitud(str, enum.Enum):
-    PENDIENTE = "pendiente"
-    APROBADA = "aprobada"
-    RECHAZADA = "rechazada"
+    PENDIENTE = "PENDIENTE"
+    APROBADA = "APROBADA"
+    RECHAZADA = "RECHAZADA"
 
 class EstadoProgreso(str, enum.Enum):
-    ACTIVO = "activo"
-    COMPLETADO = "completado"
-    CANJEADO = "canjeado"
+    ACTIVO = "ACTIVO"
+    COMPLETADO = "COMPLETADO"
+    CANJEADO = "CANJEADO"
 
 class MetodoSello(str, enum.Enum):
-    QR = "qr"
-    NFC = "nfc"
-    MANUAL = "manual"
+    QR = "QR"
+    NFC = "NFC"
+    MANUAL = "MANUAL"
 
 class Usuario(Base):
     __tablename__ = "usuarios"

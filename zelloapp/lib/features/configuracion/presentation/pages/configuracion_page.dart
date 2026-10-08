@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class ConfiguracionPage extends StatelessWidget {
   const ConfiguracionPage({Key? key}) : super(key: key);
@@ -14,7 +15,7 @@ class ConfiguracionPage extends StatelessWidget {
             const Text('Pantalla de Configuración', style: TextStyle(fontSize: 18)),
             const SizedBox(height: 20),
             OutlinedButton.icon(
-              onPressed: () {},
+              onPressed: () => context.push('/scanner'),
               icon: const Icon(Icons.camera_alt),
               label: const Text('Simular Escanear QR (Establecimiento)'),
             )

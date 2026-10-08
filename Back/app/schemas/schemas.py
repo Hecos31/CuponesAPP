@@ -1,6 +1,23 @@
-from pydantic import BaseModel, UUID4
+from pydantic import BaseModel
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional, List
+
+
+class CuponeraBase(BaseModel):
+    titulo: str
+    descripcion_premio: str
+    total_sellos_requeridos: int
+    activa: bool = True
+
+class CuponeraListResponse(CuponeraBase):
+    id: str
+    establecimiento_id: str
+    fecha_creacion: datetime
+    fecha_expiracion: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
 
 class TokenQRResponse(BaseModel):
     token: str
@@ -8,36 +25,14 @@ class TokenQRResponse(BaseModel):
 
 class OtorgarSelloRequest(BaseModel):
     token_cliente: str
-    cuponera_id: UUID4
-    emisor_id: UUID4
+    cuponera_id: str
+    emisor_id: str
 
 class SelloResponse(BaseModel):
-    progreso_id: UUID4
+    progreso_id: str
     sellos_acumulados: int
     estado: str
     fecha_sello: datetime
 
     class Config:
         from_attributes = True
-
-class DisenoCuponeraResponse(BaseModel):
-    imagen_fondo_url: Optional[str]
-    icono_sello_url: Optional[str]
-    icono_sello_inactivo: Optional[str]
-    configuracion_ui: Optional[dict]
-
-    class Config:
-        from_attributes = True
-
-class CuponeraListResponse(BaseModel):
-    id: UUID4
-    titulo: str
-    descripcion_premio: str
-    total_sellos_requeridos: int
-    fecha_expiracion: Optional[datetime]
-    establecimiento_nombre: str
-    diseno: Optional[DisenoCuponeraResponse]
-
-    class Config:
-        from_attributes = True
-

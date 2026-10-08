@@ -9,18 +9,17 @@ import '../../features/novedades/presentation/pages/novedades_page.dart';
 import '../../features/busqueda/presentation/pages/busqueda_page.dart';
 import '../../features/mapa/presentation/pages/mapa_page.dart';
 import '../../features/configuracion/presentation/pages/configuracion_page.dart';
+import '../../features/fidelidad/presentation/pages/scanner_page.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
-final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> _shellNavigatorKey =
+    GlobalKey<NavigatorState>();
 
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/login',
   routes: [
-    GoRoute(
-      path: '/login',
-      builder: (context, state) => const LoginPage(),
-    ),
+    GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
     ShellRoute(
       navigatorKey: _shellNavigatorKey,
       builder: (context, state, child) {
@@ -37,7 +36,7 @@ final GoRouter appRouter = GoRouter(
           routes: [
             GoRoute(
               path: 'detalle',
-              parentNavigatorKey: _rootNavigatorKey, 
+              parentNavigatorKey: _rootNavigatorKey,
               builder: (context, state) => const CuponeraDetailPage(),
             ),
           ],
@@ -46,13 +45,14 @@ final GoRouter appRouter = GoRouter(
           path: '/busqueda',
           builder: (context, state) => const BusquedaPage(),
         ),
-        GoRoute(
-          path: '/mapa',
-          builder: (context, state) => const MapaPage(),
-        ),
+        GoRoute(path: '/mapa', builder: (context, state) => const MapaPage()),
         GoRoute(
           path: '/configuracion',
           builder: (context, state) => const ConfiguracionPage(),
+        ),
+        GoRoute(
+          path: '/scanner',
+          builder: (context, state) => const ScannerPage(),
         ),
       ],
     ),
