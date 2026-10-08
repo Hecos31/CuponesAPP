@@ -3,6 +3,7 @@ from jose import jwt, JWTError
 from passlib.context import CryptContext
 from app.core.config import settings
 import bcrypt
+from passlib.context import CryptContext
 
 ALGORITHM = "HS256"
 
@@ -49,7 +50,7 @@ def decodificar_token_cliente(token: str) -> dict | None:
     except JWTError:
         return None
 
-from passlib.context import CryptContext
+
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
