@@ -1,6 +1,7 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from app.api.endpoints import cuponeras, canjes, auth
+from fastapi.middleware.cors import CORSMiddleware
+
 
 app = FastAPI(title="API Cupones de Fidelidad")
 

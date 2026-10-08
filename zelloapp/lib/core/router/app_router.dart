@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/main/presentation/pages/main_layout.dart';
 import '../../features/cuponeras/presentation/pages/cuponeras_list_page.dart';
 import '../../features/cuponeras/presentation/pages/cuponera_detail_page.dart';
@@ -20,6 +21,7 @@ final GoRouter appRouter = GoRouter(
   initialLocation: '/login',
   routes: [
     GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+    GoRoute(path: '/register', builder: (context, state) => const RegisterPage()),
     ShellRoute(
       navigatorKey: _shellNavigatorKey,
       builder: (context, state, child) {

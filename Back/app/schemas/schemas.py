@@ -36,3 +36,20 @@ class SelloResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class UsuarioBase(BaseModel):
+    email: str
+
+class UsuarioCreate(UsuarioBase):
+    password: str
+
+class UsuarioResponse(UsuarioBase):
+    id: str
+    rol: str
+    fecha_creacion: datetime
+
+    class Config:
+        from_attributes = True
+
+class UsuarioLogin(UsuarioBase):
+    password: str

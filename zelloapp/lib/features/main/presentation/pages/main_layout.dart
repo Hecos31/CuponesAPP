@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 class MainLayout extends StatelessWidget {
   final Widget child;
 
-  const MainLayout({Key? key, required this.child}) : super(key: key);
+  const MainLayout({super.key, required this.child});
 
   int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).uri.path;

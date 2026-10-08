@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class CuponerasListPage extends StatelessWidget {
-  const CuponerasListPage({Key? key}) : super(key: key);
+  const CuponerasListPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +25,7 @@ class CuponerasListPage extends StatelessWidget {
 }
 
 class _CuponeraCardMock extends StatelessWidget {
-  const _CuponeraCardMock({Key? key}) : super(key: key);
+  const _CuponeraCardMock();
 
   @override
   Widget build(BuildContext context) {
