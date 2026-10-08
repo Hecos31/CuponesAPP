@@ -11,6 +11,9 @@ import '../../features/busqueda/presentation/pages/busqueda_page.dart';
 import '../../features/mapa/presentation/pages/mapa_page.dart';
 import '../../features/configuracion/presentation/pages/configuracion_page.dart';
 import '../../features/fidelidad/presentation/pages/scanner_page.dart';
+import '../../features/auth/presentation/pages/perfil_usuario_page.dart';
+import '../../features/auth/presentation/pages/recuperar_password_page.dart';
+
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey =
@@ -55,6 +58,18 @@ final GoRouter appRouter = GoRouter(
         GoRoute(
           path: '/scanner',
           builder: (context, state) => const ScannerPage(),
+        ),
+        GoRoute(
+          path: '/recuperar-password',
+          builder: (context, state) {
+            return const RecuperarPasswordPage();
+          },
+        ),
+        GoRoute(
+          path: '/perfil',
+          builder: (context, state) {
+            return const PerfilUsuarioPage();
+          },
         ),
       ],
     ),

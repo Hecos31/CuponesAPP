@@ -1,6 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel , EmailStr , Optional
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List 
 
 
 class CuponeraBase(BaseModel):
@@ -53,3 +53,36 @@ class UsuarioResponse(UsuarioBase):
 
 class UsuarioLogin(UsuarioBase):
     password: str
+
+########################
+class RecuperarPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class RecuperarPasswordResponse(BaseModel):
+    mensaje: str
+    token: str
+    expira_en_segundos: int
+
+
+class RestablecerPasswordRequest(BaseModel):
+    token: str
+    nueva_password: str
+
+
+class MensajeResponse(BaseModel):
+    mensaje: str
+
+
+class UsuarioPerfilResponse(BaseModel):
+    id: str
+    email: EmailStr
+    rol: str
+    fecha_creacion: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ActualizarPerfilRequest(BaseModel):
+    email: Optional[EmailStr] = None
