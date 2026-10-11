@@ -3,11 +3,11 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import NullPool
 from app.core.config import settings
 
+from sqlalchemy.pool import NullPool
+
 engine = create_engine(
     settings.DATABASE_URL, 
     pool_pre_ping=True, 
-    pool_size=2, 
-    max_overflow=2
     poolclass=NullPool
 )
 

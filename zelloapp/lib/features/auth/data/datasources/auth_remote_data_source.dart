@@ -19,7 +19,9 @@ class AuthRemoteDataSource {
       return true;
     } else {
       final error = json.decode(response.body);
+  
       throw Exception(error['detail'] ?? 'Error en el registro');
+      
     }
   }
 }

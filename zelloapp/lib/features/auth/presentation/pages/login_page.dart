@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
+import '../../../../core/network/api_config.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -26,21 +26,17 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  String _getBaseUrl() {
-    if (kIsWeb) {
-      return 'http://127.0.0.1:8000';
-    }
-    return 'http://10.0.2.2:8000';
-  }
-
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final baseUrl = _getBaseUrl();
-      final url = Uri.parse('$baseUrl/api/v1/auth/login');
+      final baseUrl = ApiConfig.baseUrl;
+      
+      // ✅ CORRECCIÓN AQUÍ: Quitamos el /api/v1/ porque tu baseUrl ya lo incluye
+      // Si tu baseUrl NO termina en slash (/), asegúrate de dejarlo así:
+      final url = Uri.parse('$baseUrl/auth/login');
 
       final response = await http.post(
         url,

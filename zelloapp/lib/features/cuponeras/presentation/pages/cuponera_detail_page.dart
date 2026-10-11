@@ -63,6 +63,7 @@ class _CuponeraDetailPageState extends State<CuponeraDetailPage> {
                   data: _qrToken!,
                   version: QrVersions.auto,
                   size: 200.0,
+                  // ignore: deprecated_member_use
                   foregroundColor: AppTheme.primaryColor,
                 ),
               )
