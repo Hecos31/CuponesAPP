@@ -80,9 +80,56 @@ class UsuarioPerfilResponse(BaseModel):
     rol: str
     fecha_creacion: datetime
 
+
+class ActualizarPerfilRequest(BaseModel):
+    email: Optional[EmailStr] = None
+
+
+# --- Solicitudes y Establecimientos (Sprint 3) ---
+
+class SolicitudEstablecimientoBase(BaseModel):
+    nombre_negocio: str
+    documentos_url: Optional[str] = None
+
+class SolicitudEstablecimientoCreate(SolicitudEstablecimientoBase):
+    usuario_id: str
+
+class SolicitudEstablecimientoUpdateEstado(BaseModel):
+    estado: str  # PENDIENTE, APROBADA, RECHAZADA
+
+class SolicitudEstablecimientoResponse(SolicitudEstablecimientoBase):
+    id: str
+    usuario_id: str
+    estado: str
+    fecha_solicitud: datetime
+
     class Config:
         from_attributes = True
 
 
-class ActualizarPerfilRequest(BaseModel):
-    email: Optional[EmailStr] = None
+class EstablecimientoBase(BaseModel):
+    nombre: str
+    logo_url: Optional[str] = None
+    activo: bool = True
+
+class EstablecimientoCreate(EstablecimientoBase):
+    propietario_id: str
+    slug: Optional[str] = None
+
+class EstablecimientoUpdate(BaseModel):
+    nombre: Optional[str] = None
+    logo_url: Optional[str] = None
+    activo: Optional[bool] = None
+
+class EstablecimientoResponse(EstablecimientoBase):
+    id: str
+    propietario_id: str
+    slug: str
+    fecha_creacion: datetime
+
+    class Config:
+        from_attributes = True
+
+class UploadDocumentoResponse(BaseModel):
+    url: str
+    filename: str
