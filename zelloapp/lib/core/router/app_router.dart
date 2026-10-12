@@ -13,6 +13,11 @@ import '../../features/configuracion/presentation/pages/configuracion_page.dart'
 import '../../features/fidelidad/presentation/pages/scanner_page.dart';
 import '../../features/auth/presentation/pages/perfil_usuario_page.dart';
 import '../../features/auth/presentation/pages/recuperar_password_page.dart';
+import '../../features/sucursales/data/datasources/sucursales_remote_data_source.dart';
+import '../../features/sucursales/presentation/pages/administracion_sucursales_page.dart';
+import '../../features/sucursales/presentation/pages/alta_sucursal_page.dart';
+import '../../features/sucursales/presentation/pages/configuracion_sucursal_page.dart';
+import '../../features/sucursales/presentation/pages/verificacion_identidad_page.dart';
 
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -25,6 +30,25 @@ final GoRouter appRouter = GoRouter(
   routes: [
     GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
     GoRoute(path: '/register', builder: (context, state) => const RegisterPage()),
+    GoRoute(
+      path: '/sucursales/administracion',
+      builder: (context, state) => const AdministracionSucursalesPage(),
+    ),
+    GoRoute(
+      path: '/sucursales/alta',
+      builder: (context, state) => const AltaSucursalPage(),
+    ),
+    GoRoute(
+      path: '/sucursales/configuracion',
+      builder: (context, state) {
+        final sucursal = state.extra as SucursalModel?;
+        return ConfiguracionSucursalPage(sucursal: sucursal);
+      },
+    ),
+    GoRoute(
+      path: '/sucursales/verificacion',
+      builder: (context, state) => const VerificacionIdentidadPage(),
+    ),
     ShellRoute(
       navigatorKey: _shellNavigatorKey,
       builder: (context, state, child) {
