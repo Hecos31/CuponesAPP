@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class ConfiguracionPage extends StatelessWidget {
-  const ConfiguracionPage({super.key});
+  const ConfiguracionPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +18,16 @@ class ConfiguracionPage extends StatelessWidget {
               onPressed: () => context.push('/scanner'),
               icon: const Icon(Icons.camera_alt),
               label: const Text('Simular Escanear QR (Establecimiento)'),
-            )
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => context.push('/editor'),
+              icon: const Icon(Icons.design_services),
+              label: const Text('Abrir Editor Visual'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
           ],
         ),
       ),

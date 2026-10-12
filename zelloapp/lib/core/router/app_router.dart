@@ -13,7 +13,7 @@ import '../../features/configuracion/presentation/pages/configuracion_page.dart'
 import '../../features/fidelidad/presentation/pages/scanner_page.dart';
 import '../../features/auth/presentation/pages/perfil_usuario_page.dart';
 import '../../features/auth/presentation/pages/recuperar_password_page.dart';
-
+import '../../features/editor/presentation/pages/editor_page.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey =
@@ -24,7 +24,10 @@ final GoRouter appRouter = GoRouter(
   initialLocation: '/login',
   routes: [
     GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
-    GoRoute(path: '/register', builder: (context, state) => const RegisterPage()),
+    GoRoute(
+      path: '/register',
+      builder: (context, state) => const RegisterPage(),
+    ),
     ShellRoute(
       navigatorKey: _shellNavigatorKey,
       builder: (context, state, child) {
@@ -70,6 +73,10 @@ final GoRouter appRouter = GoRouter(
           builder: (context, state) {
             return const PerfilUsuarioPage();
           },
+        ),
+        GoRoute(
+          path: '/editor',
+          builder: (context, state) => const EditorPage(),
         ),
       ],
     ),
