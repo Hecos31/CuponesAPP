@@ -52,9 +52,13 @@ class Establecimiento(Base):
     logo_url = Column(String(500), nullable=True)
     activo = Column(Boolean, default=True, nullable=False)
     fecha_creacion = Column(DateTime, default=datetime.utcnow, nullable=False)
-
     propietario = relationship("Usuario", back_populates="establecimientos")
     cuponeras = relationship("Cuponera", back_populates="establecimiento")
+    #..Establecmiientos Ale#..
+    __tablename__ = "establishments"
+    
+    status = Column(String(20), default="pendiente")
+    admin_notes = Column(Text, nullable=True)
 
 
 class SolicitudEstablecimiento(Base):

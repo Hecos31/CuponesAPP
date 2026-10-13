@@ -13,7 +13,8 @@ import '../../features/configuracion/presentation/pages/configuracion_page.dart'
 import '../../features/fidelidad/presentation/pages/scanner_page.dart';
 import '../../features/auth/presentation/pages/perfil_usuario_page.dart';
 import '../../features/auth/presentation/pages/recuperar_password_page.dart';
-
+import '../../features/auth/presentation/pages/approval_status_page.dart';
+import '../../features/cuponeras/presentation/pages/creador_cupones.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey =
@@ -70,6 +71,15 @@ final GoRouter appRouter = GoRouter(
           builder: (context, state) {
             return const PerfilUsuarioPage();
           },
+        ),
+        //Agregado
+        GoRoute(
+        path: '/approval-status',
+        builder: (context, state) => const ApprovalStatusPage(),
+        ),
+        GoRoute(
+        builder: (context, state) => const CreadorCupones(),
+        path: '/crear-cupon',
         ),
       ],
     ),
