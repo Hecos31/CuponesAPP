@@ -1,6 +1,6 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr , Field , field_validator
 from datetime import datetime
-from typing import Optional, List 
+from typing import Optional, List, Dict, Optional , Any
 
 
 class CuponeraBase(BaseModel):
@@ -86,3 +86,26 @@ class UsuarioPerfilResponse(BaseModel):
 
 class ActualizarPerfilRequest(BaseModel):
     email: Optional[EmailStr] = None
+
+########Diseños SVG
+class DisenoCuponeraUpdate(BaseModel):
+    configuracion_ui: Dict[str, Any] = Field(default_factory=dict)
+    svg_markup: Optional[str] = None
+    eliminar_svg: bool = False
+
+    @field_validator("configuracion_ui")
+    @classmethod
+    def validar_configuracion(cls, valor: Dict[str, Any]) -> Dict[str, Any]:
+        if len(str(valor)) > 100_000:
+            raise ValueError("La configuración del diseño es demasiado grande.")
+        return valor
+
+
+class DisenoCuponeraResponse(BaseModel):
+    cuponera_id: str
+    configuracion_ui: Dict[str, Any] = Field(default_factory=dict)
+    svg_markup: Optional[str] = None
+    actualizado: bool = True
+
+DisenoCuponeraUpdate.model_rebuild()
+DisenoCuponeraResponse.model_rebuild()

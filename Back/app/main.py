@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.api.endpoints import cuponeras, canjes , usuarios, auth
+from app.api.endpoints import cuponeras, canjes , usuarios, auth , disenos
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -22,6 +22,9 @@ app.include_router(usuarios.router,prefix="/api/v1/usuarios",tags=["Usuarios"])
 app.include_router(usuarios.router,prefix="/api/v1/usuarios",tags=["Autenticación"])
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Autenticación"])
+##Nueva Ruta de diseños
+app.include_router(disenos.router, prefix="/api/v1/cuponeras", tags=["Diseño de cuponeras"],
+)
 
 
 

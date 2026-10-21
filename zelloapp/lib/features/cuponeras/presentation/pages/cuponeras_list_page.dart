@@ -9,6 +9,13 @@ class CuponerasListPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mis Cuponeras'),
+        actions: [
+          IconButton(
+            tooltip: 'Diseñar cuponera',
+            icon: const Icon(Icons.brush),
+            onPressed: () => context.push('/cuponeras/disenador'),
+          ),
+        ],
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),

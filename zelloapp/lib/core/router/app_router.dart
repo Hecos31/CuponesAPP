@@ -13,6 +13,7 @@ import '../../features/configuracion/presentation/pages/configuracion_page.dart'
 import '../../features/fidelidad/presentation/pages/scanner_page.dart';
 import '../../features/auth/presentation/pages/perfil_usuario_page.dart';
 import '../../features/auth/presentation/pages/recuperar_password_page.dart';
+import '../../features/cuponeras/presentation/pages/diseno_cuponera_page.dart';
 
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -45,6 +46,12 @@ final GoRouter appRouter = GoRouter(
               builder: (context, state) => const CuponeraDetailPage(),
             ),
           ],
+        ),
+        GoRoute(
+          path: '/cuponeras/disenador',
+          builder: (context, state) => DisenoCuponeraPage(
+            cuponeraIdInicial: state.uri.queryParameters['id'],
+          ),
         ),
         GoRoute(
           path: '/busqueda',
