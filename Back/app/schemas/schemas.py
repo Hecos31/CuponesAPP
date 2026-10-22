@@ -133,3 +133,6 @@ class EstablecimientoResponse(EstablecimientoBase):
 class UploadDocumentoResponse(BaseModel):
     url: str
     filename: str
+    tipo_documento: str = "INE"
+    tamano_bytes: int = 0
+    mensaje: str = "Documento probatorio almacenado de forma segura"

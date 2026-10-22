@@ -65,12 +65,17 @@ class SolicitudModel {
 
 class SucursalesRemoteDataSource {
   // ---------------------------------------------------------------------------
-  // Tarea 1000: Carga segura de documentos probatorios
+  // Tarea 1000: Carga segura de documentos probatorios (INE o Pasaporte)
   // ---------------------------------------------------------------------------
-  Future<String> uploadDocumento(List<int> bytes, String filename) async {
+  Future<String> uploadDocumento(
+    List<int> bytes,
+    String filename, {
+    String tipoDocumento = 'INE',
+  }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}/solicitudes/upload-documento');
     final request = http.MultipartRequest('POST', uri);
 
+    request.fields['tipo_documento'] = tipoDocumento;
     request.files.add(
       http.MultipartFile.fromBytes(
         'file',

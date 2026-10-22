@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
+import '../../../../core/auth/auth_session.dart';
 import '../../../../core/network/api_config.dart';
 
 class LoginPage extends StatefulWidget {
@@ -50,6 +51,9 @@ class _LoginPageState extends State<LoginPage> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
+        if (data is Map<String, dynamic>) {
+          AuthSession.instance.updateFromLogin(data);
+        }
         if (mounted) {
           context.go('/novedades');
         }

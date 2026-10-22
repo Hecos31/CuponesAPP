@@ -1,9 +1,8 @@
 import os
 import re
 import uuid
-import shutil
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
@@ -17,11 +16,12 @@ from app.schemas.schemas import (
 
 router = APIRouter()
 
-# Directorio para almacenamiento seguro de documentos probatorios
+# Directorio para almacenamiento seguro de documentos probatorios de identidad
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "static", "uploads", "documentos")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg"}
+ALLOWED_TIPOS_DOCUMENTO = {"INE", "PASAPORTE"}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
@@ -29,48 +29,107 @@ def slugify(text: str) -> str:
     slug = text.lower().strip()
     slug = re.sub(r'[^\w\s-]', '', slug)
     slug = re.sub(r'[\s_-]+', '-', slug)
-    return slug
+    return slug or "sucursal"
+
+
+def validate_magic_bytes(content: bytes, ext: str) -> bool:
+    """
+    Verifica que los primeros bytes del archivo (magic numbers) correspondan
+    con una imagen válida (PNG, JPG/JPEG) o un documento PDF para evitar archivos maliciosos.
+    """
+    if len(content) < 4:
+        return False
+    if ext == ".pdf":
+        return content.startswith(b"%PDF")
+    if ext == ".png":
+        return content.startswith(b"\x89PNG")
+    if ext in {".jpg", ".jpeg"}:
+        return content.startswith(b"\xff\xd8\xff")
+    return True
 
 
 # ===========================================================================
-# Carga segura de documentos probatorios
+# TAREA 1000: Desarrollar API para carga segura de documentos probatorios
 # ===========================================================================
 @router.post("/upload-documento", response_model=UploadDocumentoResponse, status_code=status.HTTP_201_CREATED)
-async def upload_documento_probatorio(file: UploadFile = File(...)):
+async def upload_documento_probatorio(
+    file: UploadFile = File(...),
+    tipo_documento: str = Form("INE", description="Tipo de documento de identidad: INE o PASAPORTE")
+):
     """
-    Carga de manera segura un documento probatorio (PDF, JPG, PNG).
-    Valida extensión y genera un nombre seguro no predecible.
+    Carga de manera segura un documento oficial de identidad (INE o Pasaporte) en formato PDF, JPG o PNG.
+    - Valida tipo de documento (INE, PASAPORTE).
+    - Valida extensión permitida (.pdf, .png, .jpg, .jpeg).
+    - Valida tamaño máximo (10 MB) y cabeceras del archivo (magic bytes).
+    - Sanitiza y renombra con UUID para prevenir Path Traversal o sobreescrituras.
     """
+    tipo_clean = tipo_documento.strip().upper()
+    if tipo_clean not in ALLOWED_TIPOS_DOCUMENTO:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Tipo de documento inválido ('{tipo_documento}'). Debe ser INE o PASAPORTE."
+        )
+
     _, ext = os.path.splitext(file.filename or "")
     ext = ext.lower()
 
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Tipo de archivo no permitido. Extensiones válidas: {', '.join(ALLOWED_EXTENSIONS)}"
+            detail=f"Extensión de archivo no permitida. Formatos válidos: {', '.join(ALLOWED_EXTENSIONS)}"
         )
 
-    # Generar nombre único para evitar colisiones e inyecciones de ruta
-    safe_filename = f"{uuid.uuid4().hex}{ext}"
-    file_path = os.path.join(UPLOAD_DIR, safe_filename)
-
     try:
+        content = await file.read()
+        file_size = len(content)
+
+        if file_size == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El archivo subido está vacío."
+            )
+
+        if file_size > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail="El documento excede el límite máximo permitido de 10 MB."
+            )
+
+        if not validate_magic_bytes(content, ext):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El contenido binario del archivo no coincide con un PDF o imagen auténtica."
+            )
+
+        # Generar nombre único con prefijo del tipo de identificación (INE / PASAPORTE)
+        safe_filename = f"{tipo_clean.lower()}_{uuid.uuid4().hex}{ext}"
+        file_path = os.path.join(UPLOAD_DIR, safe_filename)
+
         with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            buffer.write(content)
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error al almacenar el archivo: {str(e)}"
+            detail=f"Error al almacenar el documento probatorio: {str(e)}"
         )
     finally:
         await file.close()
 
     public_url = f"/static/uploads/documentos/{safe_filename}"
-    return UploadDocumentoResponse(url=public_url, filename=safe_filename)
+    return UploadDocumentoResponse(
+        url=public_url,
+        filename=safe_filename,
+        tipo_documento=tipo_clean,
+        tamano_bytes=file_size,
+        mensaje=f"Documento de identidad ({tipo_clean}) verificado y almacenado de forma segura."
+    )
 
 
 # ============================================================================
-# CREAR Y CONSULTAR SOLICITUDES DE ESTABLECIMIENTOS
+# CREAR Y CONSULTAR SOLICITUDES DE VERIFICACIÓN Y ALTA DE SUCURSAL
 # ============================================================================
 @router.post("/", response_model=SolicitudEstablecimientoResponse, status_code=status.HTTP_201_CREATED)
 def crear_solicitud(
@@ -78,19 +137,26 @@ def crear_solicitud(
     db: Session = Depends(get_db)
 ):
     """
-    Registra una nueva solicitud de verificación de establecimiento en estado PENDIENTE.
+    Registra una nueva solicitud de verificación de identidad y alta de sucursal en estado PENDIENTE.
+    Requiere que previamente se haya cargado el documento de identidad (INE o Pasaporte).
     """
     usuario = db.query(Usuario).filter(Usuario.id == solicitud_in.usuario_id).first()
     if not usuario:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="El usuario especificado no existe."
+            detail="El usuario solicitante especificado no existe."
+        )
+
+    if not solicitud_in.documentos_url or not solicitud_in.documentos_url.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Es obligatorio adjuntar el documento de verificación de identidad (INE o Pasaporte) antes de solicitar el alta de la sucursal."
         )
 
     solicitud = SolicitudEstablecimiento(
         usuario_id=solicitud_in.usuario_id,
-        nombre_negocio=solicitud_in.nombre_negocio,
-        documentos_url=solicitud_in.documentos_url,
+        nombre_negocio=solicitud_in.nombre_negocio.strip(),
+        documentos_url=solicitud_in.documentos_url.strip(),
         estado=EstadoSolicitud.PENDIENTE
     )
     db.add(solicitud)
@@ -108,7 +174,7 @@ def listar_solicitudes(
     db: Session = Depends(get_db)
 ):
     """
-    Lista las solicitudes de verificación registradas, con soporte de filtrado.
+    Lista las solicitudes de verificación y alta de sucursal registradas.
     """
     query = db.query(SolicitudEstablecimiento)
 
@@ -138,7 +204,7 @@ def obtener_solicitud(solicitud_id: str, db: Session = Depends(get_db)):
 
 
 # ============================================================================
-# TAREA 980: Máquina de estados (PENDIENTE -> APROBADA / RECHAZADA)
+# TAREA 980: Desarrollar API para la Máquina de estados (Pendiente, Aprobado, Rechazado)
 # ============================================================================
 @router.patch("/{solicitud_id}/estado", response_model=SolicitudEstablecimientoResponse)
 def actualizar_estado_solicitud(
@@ -147,11 +213,11 @@ def actualizar_estado_solicitud(
     db: Session = Depends(get_db)
 ):
     """
-    Máquina de estados para solicitudes de verificación.
-    Transiciones válidas:
-      - PENDIENTE -> APROBADA: Aprueba la solicitud, promueve el rol del usuario a 'propietario'
-                               y genera automáticamente el Establecimiento inicial.
-      - PENDIENTE -> RECHAZADA: Rechaza la solicitud con registro en base de datos.
+    API para la Máquina de estados de una solicitud (PENDIENTE, APROBADA, RECHAZADA).
+    Gestiona y valida las transiciones permitidas entre los estados de la solicitud:
+      - Estado inicial: PENDIENTE
+      - Estados finales: APROBADA, RECHAZADA
+    (La validación manual del local y alta administrativa corresponde a otro endpoint).
     """
     solicitud = db.query(SolicitudEstablecimiento).filter(SolicitudEstablecimiento.id == solicitud_id).first()
     if not solicitud:
@@ -160,50 +226,38 @@ def actualizar_estado_solicitud(
             detail="Solicitud no encontrada."
         )
 
-    nuevo_estado_str = payload.estado.upper()
-    if nuevo_estado_str not in EstadoSolicitud.__members__:
+    # Normalizar entrada (acepta APROBADO/APROBADA, RECHAZADO/RECHAZADA, PENDIENTE)
+    raw_estado = payload.estado.strip().upper()
+    mapa_estados = {
+        "PENDIENTE": "PENDIENTE",
+        "APROBADA": "APROBADA",
+        "APROBADO": "APROBADA",
+        "RECHAZADA": "RECHAZADA",
+        "RECHAZADO": "RECHAZADA",
+    }
+
+    if raw_estado not in mapa_estados:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Estado inválido. Opciones permitidas: {[e.value for e in EstadoSolicitud]}"
+            detail="Estado inválido. Estados permitidos: PENDIENTE, APROBADA, RECHAZADA."
         )
 
-    nuevo_estado = EstadoSolicitud[nuevo_estado_str]
+    nuevo_estado = EstadoSolicitud[mapa_estados[raw_estado]]
     estado_actual = solicitud.estado
 
-    # Reglas de transición de la máquina de estados
+    # Reglas de transición de la Máquina de Estados
     if estado_actual == nuevo_estado:
-        return solicitud  # Sin cambios
+        return solicitud
 
-    if estado_actual in [EstadoSolicitud.APROBADA, EstadoSolicitud.RECHAZADA] and nuevo_estado_str not in ["PENDIENTE"]:
+    # Bloquear transiciones directas entre estados terminales (APROBADA <-> RECHAZADA)
+    if estado_actual in (EstadoSolicitud.APROBADA, EstadoSolicitud.RECHAZADA) and nuevo_estado != EstadoSolicitud.PENDIENTE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Transición no permitida: La solicitud ya se encuentra en estado final '{estado_actual.value}'."
+            detail=f"Transición inválida en la máquina de estados: No se puede pasar directamente de '{estado_actual.value}' a '{nuevo_estado.value}'."
         )
 
-    # Actualizar estado de la solicitud
+    # Actualizar estado en la máquina de estados
     solicitud.estado = nuevo_estado
-
-    # Efectos colaterales de la transición a APROBADA
-    if nuevo_estado == EstadoSolicitud.APROBADA:
-        usuario = db.query(Usuario).filter(Usuario.id == solicitud.usuario_id).first()
-        if usuario and usuario.rol != RolUsuario.PROPIETARIO and usuario.rol != RolUsuario.ADMIN:
-            usuario.rol = RolUsuario.PROPIETARIO
-
-        # Crear el establecimiento automáticamente si aún no existe
-        base_slug = slugify(solicitud.nombre_negocio)
-        slug_candidato = base_slug
-        contador = 1
-        while db.query(Establecimiento).filter(Establecimiento.slug == slug_candidato).first():
-            slug_candidato = f"{base_slug}-{contador}"
-            contador += 1
-
-        nuevo_establecimiento = Establecimiento(
-            propietario_id=solicitud.usuario_id,
-            nombre=solicitud.nombre_negocio,
-            slug=slug_candidato,
-            activo=True
-        )
-        db.add(nuevo_establecimiento)
 
     db.commit()
     db.refresh(solicitud)
