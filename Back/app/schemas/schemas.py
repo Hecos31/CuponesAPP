@@ -96,7 +96,8 @@ class DisenoCuponeraUpdate(BaseModel):
     @field_validator("configuracion_ui")
     @classmethod
     def validar_configuracion(cls, valor: Dict[str, Any]) -> Dict[str, Any]:
-        if len(str(valor)) > 100_000:
+        # Ahora los SVG viajan dentro de los elementos, por eso el límite es mayor (~10 MB).
+        if len(str(valor)) > 10_000_000:
             raise ValueError("La configuración del diseño es demasiado grande.")
         return valor
 

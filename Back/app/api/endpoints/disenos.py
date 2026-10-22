@@ -165,6 +165,13 @@ def guardar_diseno(
 
     configuracion: dict[str, Any] = dict(datos.configuracion_ui)
 
+    # Diseño por elementos (tipo Canva): cada SVG se revisa por separado.
+    elementos = configuracion.get("elementos")
+    if isinstance(elementos, list):
+        for elemento in elementos:
+            if isinstance(elemento, dict) and elemento.get("tipo") == "svg":
+                elemento["svg"] = validar_svg(elemento.get("svg"))
+
     diseno = (
         db.query(DisenoCuponera)
         .filter(DisenoCuponera.cuponera_id == cuponera_id)
