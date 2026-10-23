@@ -1,8 +1,10 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
-from app.models.models import Usuario
+# Asegúrate de importar los demás modelos necesarios
+from app.models.models import Usuario, Establecimiento, Cuponera, DisenoCuponera, RolUsuario 
 from app.schemas import schemas
 from app.core import security
 
@@ -161,3 +163,83 @@ def actualizar_perfil(
     db.refresh(usuario)
 
     return usuario
+
+
+# SIMULAR ALTA DE SUCURSAL
+
+@router.post(
+    "/{usuario_id}/simular-alta-sucursal",
+    response_model=schemas.SimularAltaSucursalResponse
+)
+def simular_alta_sucursal(
+    usuario_id: str,
+    nombre_negocio: str,
+    db: Session = Depends(get_db)
+):
+    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+    
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado"
+        )
+        
+    # 1. Cambiamos el rol del usuario a propietario
+    usuario.rol = RolUsuario.PROPIETARIO
+    
+    # 2. Creamos su establecimiento asociado
+    nuevo_establecimiento = Establecimiento(
+        propietario_id=usuario.id,
+        nombre=nombre_negocio,
+        slug=nombre_negocio.lower().replace(" ", "-") + "-" + str(uuid.uuid4())[:4]
+    )
+    db.add(nuevo_establecimiento)
+    db.flush() # flush() nos da el ID antes de hacer commit
+    
+    # 3. Creamos su Cuponera Lógica Base
+    nueva_cuponera = Cuponera(
+        establecimiento_id=nuevo_establecimiento.id,
+        titulo=f"Cuponera de {nombre_negocio}",
+        descripcion_premio="Premio por definir",
+        total_sellos_requeridos=6
+    )
+    db.add(nueva_cuponera)
+    db.flush()
+    
+    # 4. Creamos el espacio para guardar su JSON (Diseño Visual)
+    nuevo_diseno = DisenoCuponera(
+        cuponera_id=nueva_cuponera.id,
+        configuracion_ui={} # Inicia con JSON vacío
+    )
+    db.add(nuevo_diseno)
+    
+    db.commit()
+    
+    return schemas.SimularAltaSucursalResponse(
+        mensaje="Alta exitosa. Ahora eres una sucursal.",
+        establecimiento_id=nuevo_establecimiento.id,
+        cuponera_id=nueva_cuponera.id
+    )
+
+
+@router.get("/{usuario_id}/estado-sucursal")
+def obtener_estado_sucursal(usuario_id: str, db: Session = Depends(get_db)):
+    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    # Buscamos si el usuario tiene un establecimiento registrado en la BD
+    establecimiento = db.query(Establecimiento).filter(Establecimiento.propietario_id == usuario.id).first()
+    
+    cuponera_id = None
+    if establecimiento:
+        cuponera = db.query(Cuponera).filter(Cuponera.establecimiento_id == establecimiento.id).first()
+        if cuponera:
+            cuponera_id = cuponera.id
+
+    return {
+        "rol": usuario.rol,
+        "es_sucursal": establecimiento is not None,
+        "establecimiento_id": establecimiento.id if establecimiento else None,
+        "cuponera_id": cuponera_id
+    }

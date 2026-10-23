@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
-from typing import Optional, List 
+from typing import Optional, List, Dict, Any
 
 
 class CuponeraBase(BaseModel):
@@ -14,6 +14,10 @@ class CuponeraListResponse(CuponeraBase):
     establecimiento_id: str
     fecha_creacion: datetime
     fecha_expiracion: Optional[datetime] = None
+    
+    # 👇 AÑADIMOS ESTOS DOS CAMPOS PARA QUE VIAJEN A FLUTTER 👇
+    premios_intermedios: Optional[str] = None
+    configuracion_ui: Optional[Any] = None
 
     class Config:
         from_attributes = True
@@ -86,3 +90,13 @@ class UsuarioPerfilResponse(BaseModel):
 
 class ActualizarPerfilRequest(BaseModel):
     email: Optional[EmailStr] = None
+
+class SimularAltaSucursalResponse(BaseModel):
+    mensaje: str
+    establecimiento_id: str
+    cuponera_id: str
+
+class GuardarDisenoRequest(BaseModel):
+    total_visitas: Optional[int] = None
+    premios_intermedios: Optional[str] = None
+    diseno_json: Dict[str, Any]

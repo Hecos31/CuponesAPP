@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import '../../../../core/network/api_config.dart';
+import '../../../../core/network/sesion_usuario.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -50,8 +51,17 @@ class _LoginPageState extends State<LoginPage> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
+        // ✅ Extraemos el ID del objeto 'usuario' que responde tu backend
+        final usuarioData = data['usuario'];
+        final usuarioId = usuarioData != null ? usuarioData['id'] : '';
+        final rol = usuarioData != null ? usuarioData['rol'] : '';
+
+        // Guardamos en la sesión global
+        SesionUsuario().usuarioId = usuarioId;
+        SesionUsuario().rol = rol;
+
         if (mounted) {
-          context.go('/novedades');
+          context.go('/novedades'); // O a donde redirijas tras el login
         }
       } else {
         final message = data['detail'] ?? 'Credenciales incorrectas';

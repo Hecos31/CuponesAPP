@@ -16,18 +16,34 @@ import '../../features/auth/presentation/pages/recuperar_password_page.dart';
 import '../../features/editor/presentation/pages/editor_page.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
-final GlobalKey<NavigatorState> _shellNavigatorKey =
-    GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/login',
   routes: [
-    GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+    // --- RUTAS PÚBLICAS O DE PANTALLA COMPLETA (FUERA DEL SHELL) ---
+    GoRoute(
+      path: '/login', 
+      builder: (context, state) => const LoginPage(),
+    ),
     GoRoute(
       path: '/register',
       builder: (context, state) => const RegisterPage(),
     ),
+    GoRoute(
+      path: '/cuponeras/detalle',
+      builder: (context, state) => const CuponeraDetailPage(),
+    ),
+    GoRoute(
+      path: '/editor',
+      builder: (context, state) {
+        final cuponeraId = state.extra as String?;
+        return EditorPage(cuponeraId: cuponeraId);
+      },
+    ),
+
+    // --- RUTAS CON NAVEGACIÓN INFERIOR (DENTRO DEL SHELL) ---
     ShellRoute(
       navigatorKey: _shellNavigatorKey,
       builder: (context, state, child) {
@@ -41,19 +57,15 @@ final GoRouter appRouter = GoRouter(
         GoRoute(
           path: '/cuponeras',
           builder: (context, state) => const CuponerasListPage(),
-          routes: [
-            GoRoute(
-              path: 'detalle',
-              parentNavigatorKey: _rootNavigatorKey,
-              builder: (context, state) => const CuponeraDetailPage(),
-            ),
-          ],
         ),
         GoRoute(
           path: '/busqueda',
           builder: (context, state) => const BusquedaPage(),
         ),
-        GoRoute(path: '/mapa', builder: (context, state) => const MapaPage()),
+        GoRoute(
+          path: '/mapa', 
+          builder: (context, state) => const MapaPage(),
+        ),
         GoRoute(
           path: '/configuracion',
           builder: (context, state) => const ConfiguracionPage(),
@@ -64,19 +76,11 @@ final GoRouter appRouter = GoRouter(
         ),
         GoRoute(
           path: '/recuperar-password',
-          builder: (context, state) {
-            return const RecuperarPasswordPage();
-          },
+          builder: (context, state) => const RecuperarPasswordPage(),
         ),
         GoRoute(
           path: '/perfil',
-          builder: (context, state) {
-            return const PerfilUsuarioPage();
-          },
-        ),
-        GoRoute(
-          path: '/editor',
-          builder: (context, state) => const EditorPage(),
+          builder: (context, state) => const PerfilUsuarioPage(),
         ),
       ],
     ),
