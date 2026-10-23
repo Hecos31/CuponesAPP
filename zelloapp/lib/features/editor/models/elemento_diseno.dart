@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-enum TipoElemento { texto, svg, sello, botonQr }
+// Agregamos 'forma' al enum
+enum TipoElemento { texto, svg, sello, botonQr, forma }
 
 class ElementoDiseno {
   String id;
@@ -25,7 +26,9 @@ class ElementoDiseno {
   bool conSombra;
   
   String? svg;
+  String? svgContenido; // Para almacenar el código XML del SVG de forma segura
   String icono;
+  String forma; // 'cuadrado', 'circulo', 'triangulo'
 
   ElementoDiseno({
     required this.id,
@@ -46,7 +49,9 @@ class ElementoDiseno {
     this.radioBorde = 0,
     this.conSombra = false,
     this.svg,
+    this.svgContenido,
     this.icono = 'estrella',
+    this.forma = 'cuadrado',
   });
 
   Map<String, dynamic> toJson() => {
@@ -55,11 +60,10 @@ class ElementoDiseno {
     'negrita': negrita, 'cursiva': cursiva, 'color': color.value,
     'colorFondo': colorFondo.value, 'colorBorde': colorBorde.value,
     'grosorBorde': grosorBorde, 'radioBorde': radioBorde, 'conSombra': conSombra,
-    'svg': svg, 'icono': icono,
+    'svg': svg, 'svgContenido': svgContenido, 'icono': icono, 'forma': forma,
   };
 
   factory ElementoDiseno.fromJson(Map<String, dynamic> json) {
-    // Función segura para extraer colores sin que rompa la app
     Color parseColor(dynamic colorValue, Color colorPorDefecto) {
       if (colorValue == null) return colorPorDefecto;
       if (colorValue is int) return Color(colorValue);
@@ -86,7 +90,6 @@ class ElementoDiseno {
       negrita: json['negrita'] ?? false,
       cursiva: json['cursiva'] ?? false,
       
-      // PROPIEDADES RECUPERADAS CORRECTAMENTE
       color: parseColor(json['color'], Colors.black),
       colorFondo: parseColor(json['colorFondo'], Colors.transparent),
       colorBorde: parseColor(json['colorBorde'], Colors.transparent),
@@ -94,7 +97,9 @@ class ElementoDiseno {
       radioBorde: (json['radioBorde'] as num?)?.toDouble() ?? 0.0,
       conSombra: json['conSombra'] ?? false,
       svg: json['svg'],
+      svgContenido: json['svgContenido'],
       icono: json['icono'] ?? 'estrella',
+      forma: json['forma'] ?? 'cuadrado',
     );
   }
 }

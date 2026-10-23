@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/diseno_lienzo.dart';
+import '../models/elemento_diseno.dart';
 
 class PanelCapas extends StatelessWidget {
   final DisenoLienzo diseno;
@@ -30,21 +31,30 @@ class PanelCapas extends StatelessWidget {
       itemCount: diseno.elementos.length,
       onReorder: (viejoIndice, nuevoIndice) {
         if (nuevoIndice > viejoIndice) nuevoIndice -= 1;
-        final elemento = diseno.elementos.removeAt(viejoIndice);
-        diseno.elementos.insert(nuevoIndice, elemento);
+        
+        // Ajustamos los índices visuales por la lista invertida
+        final int realOldIndex = diseno.elementos.length - 1 - viejoIndice;
+        int realNewIndex = diseno.elementos.length - 1 - nuevoIndice;
+        
+        final elemento = diseno.elementos.removeAt(realOldIndex);
+        diseno.elementos.insert(realNewIndex, elemento);
         alCambiar();
       },
       itemBuilder: (context, index) {
-        // Invertimos la lista visualmente para que el elemento superior esté arriba en la lista
         final e = diseno.elementos[diseno.elementos.length - 1 - index];
+        
+        IconData iconoCapa = Icons.verified;
+        if (e.tipo == TipoElemento.texto) iconoCapa = Icons.text_fields;
+        if (e.tipo == TipoElemento.svg) iconoCapa = Icons.image;
+        if (e.tipo == TipoElemento.forma) {
+          iconoCapa = e.forma == 'circulo' ? Icons.circle : (e.forma == 'triangulo' ? Icons.change_history : Icons.square);
+        }
+
         return ListTile(
           key: ValueKey(e.id),
-          leading: Icon(
-            e.tipo.name == 'texto' ? Icons.text_fields :
-            e.tipo.name == 'svg' ? Icons.image : Icons.verified,
-          ),
-          title: Text(e.tipo.name.toUpperCase()),
-          subtitle: Text(e.texto.isNotEmpty ? e.texto : 'ID: ${e.id.substring(0, 4)}'),
+          leading: Icon(iconoCapa),
+          title: Text(e.tipo.name.toUpperCase() + (e.tipo == TipoElemento.forma ? ' (${e.forma})' : '')),
+          subtitle: Text(e.texto.isNotEmpty && e.tipo == TipoElemento.texto ? e.texto : 'ID: ${e.id.substring(0, 4)}'),
           selected: e.id == seleccionadoId,
           selectedTileColor: Colors.blue.withOpacity(0.1),
           onTap: () => alSeleccionar(e.id),
