@@ -3,11 +3,15 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
-# Asegúrate de importar los demás modelos necesarios
-from app.models.models import Usuario, Establecimiento, Cuponera, DisenoCuponera, RolUsuario , Establecimiento
+from app.models.models import (
+    Usuario, 
+    Establecimiento, 
+    Cuponera, 
+    DisenoCuponera, 
+    RolUsuario
+)
 from app.schemas import schemas
 from app.core import security
-
 
 router = APIRouter()
 

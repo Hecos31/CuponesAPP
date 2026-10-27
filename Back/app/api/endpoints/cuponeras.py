@@ -7,10 +7,6 @@ from app.api.dependencies import get_db
 from app.models import models
 from app.schemas import schemas
 
-from app.models.models import Cuponera, Establecimiento
-from app.schemas.schemas import CuponeraListResponse
-
-
 router = APIRouter()
 
 @router.get("/", response_model=List[schemas.CuponeraListResponse])
@@ -35,7 +31,7 @@ def listar_cuponeras(skip: int = 0, limit: int = 20, db: Session = Depends(get_d
             "titulo": c.titulo,
             "descripcion_premio": c.descripcion_premio,
             "total_sellos_requeridos": c.total_sellos_requeridos,
-            "premios_intermedios": c.premios_intermedios,
+            "premios_intermedios": getattr(c, 'premios_intermedios', None),
             "fecha_expiracion": c.fecha_expiracion,
             "activa": c.activa,
             "fecha_creacion": c.fecha_creacion,
@@ -44,10 +40,12 @@ def listar_cuponeras(skip: int = 0, limit: int = 20, db: Session = Depends(get_d
 
     return resultados
 
+
 @router.get("/{cuponera_id}", response_model=schemas.CuponeraListResponse)
 def obtener_cuponera(cuponera_id: str, db: Session = Depends(get_db)):
     """Obtiene el detalle completo de una cuponera específica para el editor o la vista detallada."""
     cuponera = db.query(models.Cuponera).filter(models.Cuponera.id == cuponera_id).first()
+    
     if not cuponera:
         raise HTTPException(status_code=404, detail="Cuponera no encontrada")
     
@@ -61,12 +59,13 @@ def obtener_cuponera(cuponera_id: str, db: Session = Depends(get_db)):
         "titulo": cuponera.titulo,
         "descripcion_premio": cuponera.descripcion_premio,
         "total_sellos_requeridos": cuponera.total_sellos_requeridos,
-        "premios_intermedios": cuponera.premios_intermedios,
+        "premios_intermedios": getattr(cuponera, 'premios_intermedios', None),
         "fecha_expiracion": cuponera.fecha_expiracion,
         "activa": cuponera.activa,
         "fecha_creacion": cuponera.fecha_creacion,
         "configuracion_ui": diseno_json
     }
+
 
 @router.put("/{cuponera_id}/diseno", response_model=schemas.MensajeResponse)
 def guardar_diseno_cuponera(
@@ -76,13 +75,14 @@ def guardar_diseno_cuponera(
 ):
     """Guarda el diseño JSON personalizado y ajusta reglas lógicas (visitas y premios)."""
     cuponera = db.query(models.Cuponera).filter(models.Cuponera.id == cuponera_id).first()
+    
     if not cuponera:
         raise HTTPException(status_code=404, detail="Cuponera no encontrada")
         
     if datos.total_visitas is not None:
         cuponera.total_sellos_requeridos = datos.total_visitas
         
-    if datos.premios_intermedios is not None:
+    if hasattr(cuponera, 'premios_intermedios') and datos.premios_intermedios is not None:
         cuponera.premios_intermedios = datos.premios_intermedios
 
     if cuponera.diseno:
@@ -97,6 +97,7 @@ def guardar_diseno_cuponera(
         
     db.commit()
     return schemas.MensajeResponse(mensaje="Diseño de cuponera guardado correctamente")
+
 
 @router.post("/{cuponera_id}/unirse", response_model=schemas.UnirseCuponeraResponse)
 def unirse_a_cuponera(cuponera_id: str, usuario_id: str, db: Session = Depends(get_db)):
@@ -137,6 +138,7 @@ def unirse_a_cuponera(cuponera_id: str, usuario_id: str, db: Session = Depends(g
         mensaje="¡Te has suscrito exitosamente a la cuponera!"
     )
 
+
 @router.get("/mis-suscripciones/{usuario_id}", response_model=List[schemas.MisSuscripcionesResponse])
 def obtener_mis_suscripciones(usuario_id: str, db: Session = Depends(get_db)):
     """Obtiene la lista de cuponeras a las que el cliente está suscrito con sus sellos acumulados."""
@@ -161,62 +163,3 @@ def obtener_mis_suscripciones(usuario_id: str, db: Session = Depends(get_db)):
             })
 
     return respuesta
-
-
-@router.put("/{cuponera_id}/diseno", response_model=schemas.MensajeResponse)
-def guardar_diseno_cuponera(
-    cuponera_id: str,
-    datos: schemas.GuardarDisenoRequest,
-    db: Session = Depends(get_db)
-):
-    cuponera = db.query(models.Cuponera).filter(models.Cuponera.id == cuponera_id).first()
-    
-    if not cuponera:
-        raise HTTPException(status_code=404, detail="Cuponera no encontrada")
-        
-    # Actualizamos la configuración lógica si fue modificada en el editor
-    if datos.total_visitas is not None:
-        cuponera.total_sellos_requeridos = datos.total_visitas
-        
-    # (Nota: Recuerda añadir la columna `premios_intermedios` a la clase Cuponera en models.py si aún no lo has hecho)
-    if hasattr(cuponera, 'premios_intermedios') and datos.premios_intermedios is not None:
-        cuponera.premios_intermedios = datos.premios_intermedios
-
-    # Guardamos el diseño JSON visual
-    if cuponera.diseno:
-        cuponera.diseno.configuracion_ui = datos.diseno_json
-    else:
-        # Por seguridad, si por alguna razón no se generó el diseño en el alta, lo creamos
-        nuevo_diseno = models.DisenoCuponera(
-            cuponera_id=cuponera.id,
-            configuracion_ui=datos.diseno_json
-        )
-        db.add(nuevo_diseno)
-        
-    db.commit()
-    
-    return schemas.MensajeResponse(mensaje="Diseño de cuponera guardado correctamente")
-
-@router.get("/{cuponera_id}", response_model=schemas.CuponeraListResponse)
-def obtener_cuponera(cuponera_id: str, db: Session = Depends(get_db)):
-    cuponera = db.query(models.Cuponera).filter(models.Cuponera.id == cuponera_id).first()
-    
-    if not cuponera:
-        raise HTTPException(status_code=404, detail="Cuponera no encontrada")
-    
-    # Extraemos el JSON de la tabla relacionada de forma segura
-    diseno_json = cuponera.diseno.configuracion_ui if cuponera.diseno else None
-
-    # Mapeamos los datos para que coincidan exactamente con lo que espera Flutter
-    return {
-        "id": cuponera.id,
-        "establecimiento_id": cuponera.establecimiento_id,
-        "titulo": cuponera.titulo,
-        "descripcion_premio": cuponera.descripcion_premio,
-        "total_sellos_requeridos": cuponera.total_sellos_requeridos,
-        "premios_intermedios": cuponera.premios_intermedios,
-        "fecha_expiracion": cuponera.fecha_expiracion,
-        "activa": cuponera.activa,
-        "fecha_creacion": cuponera.fecha_creacion,
-        "configuracion_ui": diseno_json
-    }

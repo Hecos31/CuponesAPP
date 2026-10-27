@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart'; // ✅ Importación agregada
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/network/api_config.dart';
 import '../../../../core/network/sesion_usuario.dart';
 
@@ -51,44 +51,36 @@ class _LoginPageState extends State<LoginPage> {
       if (response.statusCode == 200) {
         final prefs = await SharedPreferences.getInstance();
         
-        // 1. Guardamos el token
+        // 1. Guardamos el token de autenticación
         if (data['token'] != null) {
           await prefs.setString('token', data['token']);
         }
 
-        // 2. ✅ GUARDAMOS EL ID DEL USUARIO (Clave requerida para las suscripciones)
-        if (data['usuario'] != null && data['usuario']['id'] != null) {
-          await prefs.setString('usuario_id', data['usuario']['id']);
-        } else if (data['id'] != null) {
-          await prefs.setString('usuario_id', data['id']);
+        // 2. Extraemos los datos del usuario de forma segura
+        final usuarioData = data['usuario'];
+        final usuarioId = usuarioData != null ? usuarioData['id'] : (data['id'] ?? '');
+        final rol = usuarioData != null ? usuarioData['rol'] : 'cliente';
+
+        // 3. Guardamos el ID en SharedPreferences (vital para las suscripciones a cuponeras)
+        if (usuarioId.isNotEmpty) {
+          await prefs.setString('usuario_id', usuarioId);
         }
 
-        // 3. Extraemos el rol del JSON de respuesta
-        final rol = data['usuario'] != null ? data['usuario']['rol'] : 'cliente';
-
-        // Validamos si es PROPIETARIO
-        if (rol == 'propietario') {
-          await prefs.setBool('is_establecimiento', true);
-          await prefs.setString('status_local', 'aprobado');
-          
-          if (mounted) {
-            context.go('/descubrir'); 
-          }
-        } else {
-          await prefs.setBool('is_establecimiento', false);
-          
-          // ✅ Extraemos el ID del objeto 'usuario' que responde tu backend
-        final usuarioData = data['usuario'];
-        final usuarioId = usuarioData != null ? usuarioData['id'] : '';
-        final rol = usuarioData != null ? usuarioData['rol'] : '';
-
-        // Guardamos en la sesión global
+        // 4. Actualizamos la sesión global en memoria
         SesionUsuario().usuarioId = usuarioId;
         SesionUsuario().rol = rol;
 
+        // 5. Validamos flujos según el rol del usuario
+        if (rol == 'propietario') {
+          await prefs.setBool('is_establecimiento', true);
+          await prefs.setString('status_local', 'aprobado');
+        } else {
+          await prefs.setBool('is_establecimiento', false);
+        }
+
         if (mounted) {
-            context.go('/descubrir'); // Cambiado a /descubrir para mantener la coherencia del feed público
-          } // O a donde redirijas tras el login
+          // Redirigimos al feed general de cuponeras públicas
+          context.go('/descubrir'); 
         }
       } else {
         final message = data['detail'] ?? 'Credenciales incorrectas';

@@ -1,92 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../../../../core/network/api_config.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../models/cuponera_lista_model.dart';
 import '../../services/cuponeras_service.dart';
 
 class CuponerasListPage extends StatefulWidget {
   const CuponerasListPage({super.key});
-
-  @override
-  State<CuponerasListPage> createState() => _CuponerasListPageState();
-}
-
-class _CuponerasListPageState extends State<CuponerasListPage> {
-  List<dynamic> _cuponerasPublicas = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _cargarFeedCuponeras();
-  }
-
-  Future<void> _cargarFeedCuponeras() async {
-    try {
-      final url = Uri.parse('${ApiConfig.baseUrl}/cuponeras/');
-      final response = await http.get(url);
-
-      if (response.statusCode == 200) {
-        setState(() {
-          _cuponerasPublicas = jsonDecode(response.body);
-        });
-      }
-    } catch (e) {
-      debugPrint("Error cargando feed público: $e");
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _unirseCuponera(String cuponeraId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final usuarioId = prefs.getString('usuario_id');
-      final token = prefs.getString('token');
-
-      if (usuarioId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Por favor, inicia sesión para unirte.'), backgroundColor: Colors.orange),
-        );
-        return;
-      }
-
-      // Mostramos un indicador de carga visual rápido
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Suscribiendo...')));
-
-      final url = Uri.parse('${ApiConfig.baseUrl}/cuponeras/$cuponeraId/unirse?usuario_id=$usuarioId');
-      final response = await http.post(
-        url,
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (!mounted) return;
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data['mensaje'] ?? '¡Te has suscrito exitosamente!'), backgroundColor: Colors.green),
-        );
-      } else {
-        final data = jsonDecode(response.body);
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data['detail'] ?? 'Error al suscribirse'), backgroundColor: Colors.red),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error de conexión: $e'), backgroundColor: Colors.red));
-      }
-    }
-  }
 
   @override
   State<CuponerasListPage> createState() => _CuponerasListPageState();
@@ -162,7 +81,19 @@ class _CuponerasListPageState extends State<CuponerasListPage> {
             itemBuilder: (context, index) {
               final cuponera = cuponeras[index];
               return GestureDetector(
-                onTap: () => context.go('/cuponeras/detalle'), // O puedes pasar el ID si lo requieres
+                onTap: () {
+                  // Transformamos el modelo a Map para pasarlo correctamente al detalle
+                  // o aseguramos que la ruta reciba el objeto/mapa adecuado
+                  final Map<String, dynamic> cuponeraMap = {
+                    'id': cuponera.id,
+                    'establecimiento_nombre': cuponera.establecimientoNombre,
+                    'titulo_cuponera': cuponera.titulo,
+                    'descripcion_premio': cuponera.descripcionPremio,
+                    'total_sellos_requeridos': cuponera.totalSellosRequeridos,
+                    'configuracion_ui': cuponera.diseno,
+                  };
+                  context.push('/cuponeras/detalle', extra: cuponeraMap);
+                },
                 child: _CuponeraCardReal(cuponera: cuponera),
               );
             },
@@ -183,6 +114,7 @@ class _CuponeraCardReal extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: SizedBox(
         height: 120,
         child: Row(
