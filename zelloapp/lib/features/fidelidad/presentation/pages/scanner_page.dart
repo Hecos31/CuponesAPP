@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import '../..//data/datasources/sello_remote_data_source.dart';
+import 'package:zelloapp/features/fidelidad/data/datasources/sello_remote_data_source.dart';
 
 class ScannerPage extends StatefulWidget {
   const ScannerPage({super.key});
