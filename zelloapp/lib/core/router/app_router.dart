@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
@@ -13,12 +14,15 @@ import '../../features/configuracion/presentation/pages/configuracion_page.dart'
 import '../../features/fidelidad/presentation/pages/scanner_page.dart';
 import '../../features/auth/presentation/pages/perfil_usuario_page.dart';
 import '../../features/auth/presentation/pages/recuperar_password_page.dart';
+import '../../features/auth/presentation/pages/approval_status_page.dart';
+import '../../features/auth/presentation/pages/creador_cupones.dart';
+import '../../features/auth/presentation/pages/vista_cupones_usuario.dart';
+import '../../features/auth/presentation/pages/registro_negocio_page.dart';
 import '../../features/sucursales/data/datasources/sucursales_remote_data_source.dart';
 import '../../features/sucursales/presentation/pages/administracion_sucursales_page.dart';
 import '../../features/sucursales/presentation/pages/alta_sucursal_page.dart';
 import '../../features/sucursales/presentation/pages/configuracion_sucursal_page.dart';
 import '../../features/sucursales/presentation/pages/verificacion_identidad_page.dart';
-
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey =
@@ -28,8 +32,22 @@ final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/login',
   routes: [
+    GoRoute(
+      path: '/',
+      redirect: (context, state) => '/login',
+    ),
     GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
     GoRoute(path: '/register', builder: (context, state) => const RegisterPage()),
+
+    // 📝 Rutas de sucursales y registro de negocio con verificación de identidad y documentos
+    GoRoute(
+      path: '/registro-negocio',
+      builder: (context, state) => const RegistroNegocioPage(),
+    ),
+    GoRoute(
+      path: '/sucursales/verificacion',
+      builder: (context, state) => const VerificacionIdentidadPage(),
+    ),
     GoRoute(
       path: '/sucursales/administracion',
       builder: (context, state) => const AdministracionSucursalesPage(),
@@ -45,10 +63,13 @@ final GoRouter appRouter = GoRouter(
         return ConfiguracionSucursalPage(sucursal: sucursal);
       },
     ),
+
+    // 🔒 Ruta de estado de aprobación (Ale)
     GoRoute(
-      path: '/sucursales/verificacion',
-      builder: (context, state) => const VerificacionIdentidadPage(),
+      path: '/revision_local',
+      builder: (context, state) => const ApprovalStatusPage(),
     ),
+
     ShellRoute(
       navigatorKey: _shellNavigatorKey,
       builder: (context, state, child) {
@@ -94,6 +115,23 @@ final GoRouter appRouter = GoRouter(
           builder: (context, state) {
             return const PerfilUsuarioPage();
           },
+        ),
+        GoRoute(
+          path: '/crear-cupon',
+          builder: (context, state) => const CreadorCupones(),
+          redirect: (context, state) async {
+            final prefs = await SharedPreferences.getInstance();
+            final status = prefs.getString('status_local') ?? 'pendiente';
+
+            if (status == 'pendiente' || status == 'rechazado') {
+              return '/revision_local';
+            }
+            return null;
+          },
+        ),
+        GoRoute(
+          path: '/vista-usuario',
+          builder: (context, state) => const VistaCuponesUsuario(),
         ),
       ],
     ),

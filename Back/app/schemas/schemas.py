@@ -80,6 +80,9 @@ class UsuarioPerfilResponse(BaseModel):
     rol: str
     fecha_creacion: datetime
 
+    class Config:
+        from_attributes = True
+
 
 class ActualizarPerfilRequest(BaseModel):
     email: Optional[EmailStr] = None

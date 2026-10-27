@@ -2,11 +2,11 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.api.endpoints import cuponeras, canjes, usuarios, auth, solicitudes, establecimientos
+from app.api.endpoints import cuponeras, canjes, usuarios, auth, solicitudes, establecimientos, admin
 
 app = FastAPI(title="API Cupones de Fidelidad")
 
-# Permitir peticiones desde Flutter Web y móvil
+# Permitir peticiones desde Flutter Web, móvil y Localhost
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,6 +27,7 @@ app.include_router(usuarios.router, prefix="/api/v1/usuarios", tags=["Usuarios"]
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Autenticación"])
 app.include_router(solicitudes.router, prefix="/api/v1/solicitudes", tags=["Solicitudes y Verificación"])
 app.include_router(establecimientos.router, prefix="/api/v1/establecimientos", tags=["Sucursales / Establecimientos"])
+app.include_router(admin.router, prefix="/api/v1/admin", tags=["Administración"])
 
 @app.get("/")
 def read_root():

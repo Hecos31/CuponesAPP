@@ -21,7 +21,15 @@ UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg"}
-ALLOWED_TIPOS_DOCUMENTO = {"INE", "PASAPORTE"}
+ALLOWED_TIPOS_DOCUMENTO = {
+    "INE",
+    "PASAPORTE",
+    "IDENTIFICACION_OFICIAL",
+    "COMPROBANTE_DOMICILIO",
+    "DOCUMENTO_LOCAL",
+    "ACTA_CONSTITUTIVA",
+    "RFC",
+}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
@@ -258,6 +266,33 @@ def actualizar_estado_solicitud(
 
     # Actualizar estado en la máquina de estados
     solicitud.estado = nuevo_estado
+
+    # Si pasa a APROBADA, promovemos al usuario a propietario y creamos su establecimiento si no existe
+    if nuevo_estado == EstadoSolicitud.APROBADA:
+        usuario = db.query(Usuario).filter(Usuario.id == solicitud.usuario_id).first()
+        if usuario and usuario.rol == RolUsuario.CLIENTE:
+            usuario.rol = RolUsuario.PROPIETARIO
+
+        existente = db.query(Establecimiento).filter(
+            Establecimiento.propietario_id == solicitud.usuario_id,
+            Establecimiento.nombre == solicitud.nombre_negocio
+        ).first()
+
+        if not existente:
+            base_slug = slugify(solicitud.nombre_negocio)
+            slug_candidato = base_slug
+            contador = 1
+            while db.query(Establecimiento).filter(Establecimiento.slug == slug_candidato).first():
+                slug_candidato = f"{base_slug}-{contador}"
+                contador += 1
+
+            nuevo_establecimiento = Establecimiento(
+                propietario_id=solicitud.usuario_id,
+                nombre=solicitud.nombre_negocio,
+                slug=slug_candidato,
+                activo=True
+            )
+            db.add(nuevo_establecimiento)
 
     db.commit()
     db.refresh(solicitud)

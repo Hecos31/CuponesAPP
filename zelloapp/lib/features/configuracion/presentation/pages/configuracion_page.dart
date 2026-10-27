@@ -22,7 +22,7 @@ class ConfiguracionPage extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
-                onPressed: () => context.push('/sucursales/verificacion'),
+                onPressed: () => context.push('/registro-negocio'),
                 icon: const Icon(Icons.verified_user_outlined),
                 label: const Text('Solicitar Verificación para Alta de Sucursal'),
                 style: ElevatedButton.styleFrom(
@@ -34,6 +34,15 @@ class ConfiguracionPage extends StatelessWidget {
                 onPressed: () => context.push('/sucursales/administracion'),
                 icon: const Icon(Icons.storefront),
                 label: const Text('Administración de Sucursales'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                ),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () => context.push('/revision_local'),
+                icon: const Icon(Icons.hourglass_top_outlined),
+                label: const Text('Estado de Aprobación de mi Local'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 ),
