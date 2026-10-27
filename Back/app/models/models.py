@@ -30,17 +30,16 @@ class MetodoSello(str, enum.Enum):
 
 class Usuario(Base):
     __tablename__ = "usuarios"
-
     id = Column(String(36), primary_key=True, default=generate_uuid)
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
-    rol = Column(Enum(RolUsuario, values_callable=lambda obj: [e.value for e in obj]), nullable=False, default=RolUsuario.CLIENTE)
+    # CAMBIO: Usar String en BD para evitar truncamiento en Clever Cloud
+    rol = Column(String(50), nullable=False, default=RolUsuario.CLIENTE.value)
     fecha_creacion = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     establecimientos = relationship("Establecimiento", back_populates="propietario")
     progresos = relationship("ProgresoUsuario", back_populates="usuario")
     solicitudes = relationship("SolicitudEstablecimiento", back_populates="usuario")
-
 
 class Establecimiento(Base):
     __tablename__ = "establecimientos"
@@ -89,7 +88,6 @@ class Cuponera(Base):
     establecimiento = relationship("Establecimiento", back_populates="cuponeras")
     diseno = relationship("DisenoCuponera", back_populates="cuponera", uselist=False)
     progresos = relationship("ProgresoUsuario", back_populates="cuponera")
-
 
 class DisenoCuponera(Base):
     __tablename__ = "disenos_cuponera"

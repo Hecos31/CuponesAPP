@@ -1,30 +1,119 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../configuracion/services/sucursal_service.dart';
+import '../../../../core/network/sesion_usuario.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ConfiguracionPage extends StatefulWidget {
-  const ConfiguracionPage({super.key});
+  const ConfiguracionPage({Key? key}) : super(key: key);
 
   @override
   State<ConfiguracionPage> createState() => _ConfiguracionPageState();
 }
 
 class _ConfiguracionPageState extends State<ConfiguracionPage> {
-  String _statusLocal = 'ninguno'; 
+  final SucursalService _sucursalService = SucursalService();
+  bool _cargando = true;
+  bool _esSucursal = false;
+  String? _cuponeraIdReal;
 
   @override
   void initState() {
     super.initState();
-    _cargarEstado();
+    _verificarEstadoEnBaseDeDatos();
   }
 
-  Future<void> _cargarEstado() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (mounted) {
-      setState(() {
-        _statusLocal = prefs.getString('status_local') ?? 'ninguno';
-      });
+  // Consultamos la BD en tiempo real al abrir la pantalla
+  Future<void> _verificarEstadoEnBaseDeDatos() async {
+    final usuarioId = SesionUsuario().usuarioId;
+    if (usuarioId == null || usuarioId.isEmpty) {
+      setState(() => _cargando = false);
+      return;
     }
+
+    try {
+      final estado = await _sucursalService.consultarEstadoSucursal(usuarioId);
+      if (!mounted) return;
+
+      setState(() {
+        _esSucursal = estado['es_sucursal'] ?? false;
+        _cuponeraIdReal = estado['cuponera_id'];
+        SesionUsuario().rol = estado['rol']; // Sincronizamos rol real
+        _cargando = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _cargando = false);
+    }
+  }
+
+  void _mostrarDialogoAltaSucursal() {
+    final TextEditingController controladorNombre = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Convertirme en Sucursal'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Ingresa el nombre de tu establecimiento para generar tu espacio de cuponera exclusivo:'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controladorNombre,
+              decoration: const InputDecoration(
+                labelText: 'Nombre del Negocio',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final nombreNegocio = controladorNombre.text.trim();
+              if (nombreNegocio.isEmpty) return;
+
+              final idReal = SesionUsuario().usuarioId;
+              if (idReal == null) return;
+
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(context);
+
+              navigator.pop();
+              setState(() => _cargando = true);
+
+              try {
+                final resultado = await _sucursalService.solicitarAltaSucursal(
+                  idReal, 
+                  nombreNegocio,
+                );
+
+                if (!mounted) return;
+
+                // Volvemos a consultar la BD para refrescar IDs exactos
+                await _verificarEstadoEnBaseDeDatos();
+
+                scaffoldMessenger.showSnackBar(
+                  SnackBar(content: Text(resultado['mensaje'] ?? '¡Alta exitosa!')),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                setState(() => _cargando = false);
+                scaffoldMessenger.showSnackBar(
+                  SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                );
+              }
+            },
+            child: const Text('Registrar Negocio'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

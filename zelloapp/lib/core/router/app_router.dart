@@ -14,7 +14,7 @@ import '../../features/auth/presentation/pages/perfil_usuario_page.dart';
 import '../../features/auth/presentation/pages/recuperar_password_page.dart';
 import '../../features/auth/presentation/pages/approval_status_page.dart';
 import '../../features/auth/presentation/pages/registro_negocio_page.dart';
-
+import '../../features/editor/presentation/pages/editor_page.dart';
 // --- IMPORTS DE CUPONERAS ---
 import '../../features/cuponeras/presentation/pages/mis_cuponeras_page.dart';
 import '../../features/cuponeras/presentation/pages/cuponera_detail_page.dart';
@@ -33,9 +33,16 @@ final GoRouter appRouter = GoRouter(
     // ======================================================
     GoRoute(path: '/', redirect: (context, state) => '/login'),
     
-    GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+    // --- RUTAS PÚBLICAS O DE PANTALLA COMPLETA (FUERA DEL SHELL) ---
+    GoRoute(
+      path: '/login', 
+      builder: (context, state) => const LoginPage(),
+    ),
     
-    GoRoute(path: '/register', builder: (context, state) => const RegisterPage()),
+    GoRoute(
+      path: '/register',
+      builder: (context, state) => const RegisterPage(),
+    ),
 
     GoRoute(
       path: '/registro-negocio',
@@ -59,6 +66,19 @@ final GoRouter appRouter = GoRouter(
     // ======================================================
     // RUTAS CON BARRA DE NAVEGACIÓN (MainLayout)
     // ======================================================
+    GoRoute(
+      path: '/cuponeras/detalle',
+      builder: (context, state) => const CuponeraDetailPage(),
+    ),
+    GoRoute(
+      path: '/editor',
+      builder: (context, state) {
+        final cuponeraId = state.extra as String?;
+        return EditorPage(cuponeraId: cuponeraId);
+      },
+    ),
+
+    // --- RUTAS CON NAVEGACIÓN INFERIOR (DENTRO DEL SHELL) ---
     ShellRoute(
       navigatorKey: _shellNavigatorKey,
       builder: (context, state, child) {
@@ -83,8 +103,11 @@ final GoRouter appRouter = GoRouter(
         ),
         
         GoRoute(
+          
           path: '/mapa', 
-          builder: (context, state) => const MapaPage()
+          
+          builder: (context, state) => const MapaPage(),
+        
         ),
         
         GoRoute(
