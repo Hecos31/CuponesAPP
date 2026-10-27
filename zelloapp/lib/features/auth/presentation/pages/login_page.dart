@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart'; // ✅ Importación agregada
 import '../../../../core/network/api_config.dart';
 
 class LoginPage extends StatefulWidget {
@@ -33,9 +34,6 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final baseUrl = ApiConfig.baseUrl;
-      
-      // ✅ CORRECCIÓN AQUÍ: Quitamos el /api/v1/ porque tu baseUrl ya lo incluye
-      // Si tu baseUrl NO termina en slash (/), asegúrate de dejarlo así:
       final url = Uri.parse('$baseUrl/auth/login');
 
       final response = await http.post(
@@ -50,8 +48,32 @@ class _LoginPageState extends State<LoginPage> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        if (mounted) {
-          context.go('/novedades');
+        // ✅ CORRECCIÓN AQUÍ: Guardamos el token y el rol en el dispositivo
+        final prefs = await SharedPreferences.getInstance();
+        
+        if (data['token'] != null) {
+          await prefs.setString('token', data['token']);
+        }
+
+        // Extraemos el rol del JSON de respuesta
+        final rol = data['usuario'] != null ? data['usuario']['rol'] : 'cliente';
+
+        // Validamos si es PROPIETARIO usando la palabra exacta de tu BD
+        if (rol == 'propietario') {
+          await prefs.setBool('is_establecimiento', true);
+          await prefs.setString('status_local', 'pendiente');
+          
+          if (mounted) {
+            // Envíalo a la pantalla de espera (cambia esta ruta por el nombre real de tu ApprovalStatusPage)
+            context.go('/revision_local'); 
+          }
+        } else {
+          await prefs.setBool('is_establecimiento', false);
+          
+          if (mounted) {
+            // Envíalo a la vista normal de cliente
+            context.go('/novedades');
+          }
         }
       } else {
         final message = data['detail'] ?? 'Credenciales incorrectas';

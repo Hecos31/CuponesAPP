@@ -1,13 +1,44 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db
-from app.models.models import Usuario
+from app.models.models import Usuario, Establecimiento
 from app.schemas import schemas
 from app.core import security
 
 
 router = APIRouter()
+
+
+# --- NUEVO ENDPOINT: OBTENER ESTADO DEL USUARIO ACTUAL (/me) ---
+
+@router.get("/me")
+def get_current_user_status(request: Request, db: Session = Depends(get_db)):
+    """Devuelve el perfil del usuario logueado y el estado de su local si lo tiene."""
+    
+    # OJO: Temporalmente usamos el correo estático de tu prueba para que el flujo funcione sin JWT complejo.
+    # Cuando implementes seguridad JWT, aquí extraerás el correo o ID desde el token.
+    usuario = db.query(Usuario).filter(Usuario.email == "4@gmail.com").first()
+    
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Usuario no encontrado"
+        )
+
+    estado_local = "cliente"
+    if usuario.rol == "propietario":
+        # Buscamos su establecimiento para ver si está activo
+        local = db.query(Establecimiento).filter(Establecimiento.propietario_id == usuario.id).first()
+        if local:
+            estado_local = "aprobado" if local.activo else "pendiente"
+
+    return {
+        "id": usuario.id,
+        "email": usuario.email,
+        "rol": usuario.rol,
+        "establishment_status": estado_local
+    }
 
 
 # RECUPERAR CONTRASEÑA
@@ -115,7 +146,6 @@ def obtener_perfil(
 
 
 # ACTUALIZAR PERFIL
-
 
 @router.put(
     "/perfil/{usuario_id}",
