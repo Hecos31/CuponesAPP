@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:zelloapp/core/network/api_config.dart';
+import '../../../../core/network/api_config.dart';
 
 class ApprovalStatusPage extends StatefulWidget {
   const ApprovalStatusPage({super.key});
@@ -18,52 +18,46 @@ class _ApprovalStatusPageState extends State<ApprovalStatusPage> {
   @override
   void initState() {
     super.initState();
-    // Verificación silenciosa apenas entra a la pantalla
     _verificarEstado();
   }
-Future<void> _verificarEstado() async {
+
+  Future<void> _verificarEstado() async {
     setState(() => _isLoading = true);
 
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
+      final usuarioId = prefs.getString('usuario_id');
 
-      // Consultamos el endpoint para obtener el estado actual del usuario
+      if (usuarioId == null) return;
+
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/usuarios/me'), 
+        Uri.parse('${ApiConfig.baseUrl}/establecimientos/usuario/$usuarioId/estado-sucursal'), 
         headers: {'Authorization': 'Bearer $token'},
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final nuevoEstado = data['establishment_status'] ?? 'pendiente';
+        final bool tieneSucursal = data['tiene_sucursal'] ?? false;
         
-        await prefs.setString('status_local', nuevoEstado);
+        if (tieneSucursal && mounted) {
+          await prefs.setString('status_local', 'aprobado');
+          await prefs.setBool('is_establecimiento', true);
+          
+          if (data['cuponera_id'] != null) {
+            await prefs.setString('mi_cuponera_id', data['cuponera_id']);
+          }
 
-        if (nuevoEstado == 'aprobado' && mounted) {
-          // 1. Mostramos el mensaje de celebración al usuario
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      '¡Felicidades! Tu establecimiento ha sido aprobado.',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ),
-                ],
-              ),
+              content: Text('¡Felicidades! Tu establecimiento ha sido aprobado.'),
               backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating, // Hace que flote sobre la UI
-              duration: Duration(seconds: 4),
+              behavior: SnackBarBehavior.floating,
             ),
           );
-
-          // 2. Lo redirigimos automáticamente a la vista de cuponeras
-          context.go('/cuponeras');
+          
+          // En lugar de usar context.go (que rompe la pila de navegación), usamos replace
+          context.pushReplacement('/editor_cuponera'); 
         }
       }
     } catch (e) {
@@ -77,32 +71,22 @@ Future<void> _verificarEstado() async {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Estado de Aprobación'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.clear();
-              if (context.mounted) context.go('/login');
-            },
-          )
-        ],
+        title: const Text('Estado de Solicitud'),
+        // Eliminamos el action de logout para que muestre la flecha de regreso "<-"
       ),
-      // RefreshIndicator crea el efecto profesional de "deslizar para actualizar"
       body: RefreshIndicator(
         onRefresh: _verificarEstado,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(24.0),
           children: [
-            SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+            SizedBox(height: MediaQuery.of(context).size.height * 0.15),
             const Icon(Icons.hourglass_empty, size: 80, color: Colors.orange),
             const SizedBox(height: 24),
             const Text(
-              'Revisión en proceso',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              'Revisión en proceso', 
+              textAlign: TextAlign.center, 
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)
             ),
             const SizedBox(height: 16),
             const Text(
@@ -111,8 +95,7 @@ Future<void> _verificarEstado() async {
               style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
             const SizedBox(height: 32),
-            if (_isLoading)
-              const Center(child: CircularProgressIndicator()),
+            if (_isLoading) const Center(child: CircularProgressIndicator()),
           ],
         ),
       ),

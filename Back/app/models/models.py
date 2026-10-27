@@ -14,9 +14,9 @@ class RolUsuario(str, enum.Enum):
     CLIENTE = "cliente"
 
 class EstadoSolicitud(str, enum.Enum):
-    PENDIENTE = "PENDIENTE"
-    APROBADA = "APROBADA"
-    RECHAZADA = "RECHAZADA"
+    PENDIENTE = "pendiente"
+    APROBADA = "aprobada"
+    RECHAZADA = "rechazada"
 
 class EstadoProgreso(str, enum.Enum):
     ACTIVO = "ACTIVO"
@@ -58,7 +58,7 @@ class Establecimiento(Base):
 
 
 class SolicitudEstablecimiento(Base):
-    __tablename__ = "solicitudes_establecimientos"
+    __tablename__ = "solicitudes_establecimiento"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     usuario_id = Column(String(36), ForeignKey("usuarios.id"), nullable=False)
@@ -72,16 +72,20 @@ class SolicitudEstablecimiento(Base):
 
 class Cuponera(Base):
     __tablename__ = "cuponeras"
-
+    
     id = Column(String(36), primary_key=True, default=generate_uuid)
     establecimiento_id = Column(String(36), ForeignKey("establecimientos.id"), nullable=False)
     titulo = Column(String(255), nullable=False)
     descripcion_premio = Column(Text, nullable=False)
-    total_sellos_requeridos = Column(Integer, nullable=False)
+    total_sellos_requeridos = Column(Integer, nullable=False, default=6)
+    
+    premios_intermedios = Column(String(255), nullable=True) 
+    
     fecha_expiracion = Column(DateTime, nullable=True)
     activa = Column(Boolean, default=True, nullable=False)
     fecha_creacion = Column(DateTime, default=datetime.utcnow, nullable=False)
 
+    # Relaciones
     establecimiento = relationship("Establecimiento", back_populates="cuponeras")
     diseno = relationship("DisenoCuponera", back_populates="cuponera", uselist=False)
     progresos = relationship("ProgresoUsuario", back_populates="cuponera")
@@ -89,12 +93,11 @@ class Cuponera(Base):
 
 class DisenoCuponera(Base):
     __tablename__ = "disenos_cuponera"
-
+    
     id = Column(String(36), primary_key=True, default=generate_uuid)
     cuponera_id = Column(String(36), ForeignKey("cuponeras.id"), nullable=False, unique=True)
-    imagen_fondo_url = Column(String(500), nullable=True)
-    icono_sello_url = Column(String(500), nullable=True)
-    icono_sello_inactivo = Column(String(500), nullable=True)
+    
+    # Única columna que maneja el Server-Driven UI completo
     configuracion_ui = Column(JSON, nullable=True)
 
     cuponera = relationship("Cuponera", back_populates="diseno")

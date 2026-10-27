@@ -48,31 +48,36 @@ class _LoginPageState extends State<LoginPage> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        // ✅ CORRECCIÓN AQUÍ: Guardamos el token y el rol en el dispositivo
         final prefs = await SharedPreferences.getInstance();
         
+        // 1. Guardamos el token
         if (data['token'] != null) {
           await prefs.setString('token', data['token']);
         }
 
-        // Extraemos el rol del JSON de respuesta
+        // 2. ✅ GUARDAMOS EL ID DEL USUARIO (Clave requerida para las suscripciones)
+        if (data['usuario'] != null && data['usuario']['id'] != null) {
+          await prefs.setString('usuario_id', data['usuario']['id']);
+        } else if (data['id'] != null) {
+          await prefs.setString('usuario_id', data['id']);
+        }
+
+        // 3. Extraemos el rol del JSON de respuesta
         final rol = data['usuario'] != null ? data['usuario']['rol'] : 'cliente';
 
-        // Validamos si es PROPIETARIO usando la palabra exacta de tu BD
+        // Validamos si es PROPIETARIO
         if (rol == 'propietario') {
           await prefs.setBool('is_establecimiento', true);
-          await prefs.setString('status_local', 'pendiente');
+          await prefs.setString('status_local', 'aprobado');
           
           if (mounted) {
-            // Envíalo a la pantalla de espera (cambia esta ruta por el nombre real de tu ApprovalStatusPage)
-            context.go('/revision_local'); 
+            context.go('/descubrir'); 
           }
         } else {
           await prefs.setBool('is_establecimiento', false);
           
           if (mounted) {
-            // Envíalo a la vista normal de cliente
-            context.go('/novedades');
+            context.go('/descubrir'); // Cambiado a /descubrir para mantener la coherencia del feed público
           }
         }
       } else {

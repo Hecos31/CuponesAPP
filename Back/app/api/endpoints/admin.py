@@ -1,205 +1,161 @@
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException, Body, status
 from sqlalchemy.orm import Session
-from app.api.dependencies import get_db
-from app.models.models import Establecimiento, Usuario
+from typing import List
 import uuid
-from app.models.models import SolicitudEstablecimiento, EstadoSolicitud
+
+from app.api.dependencies import get_db
+from app.models import models
+from app.schemas import schemas
+
 router = APIRouter()
 
-@router.get("/establishments")
-def get_all_establishments(db: Session = Depends(get_db)):
-    """Lista todos los establecimientos registrados en la base de datos."""
-    establecimientos = db.query(Establecimiento).all()
-    return establecimientos
+@router.get("/usuario/{usuario_id}/estado-sucursal", response_model=schemas.EstadoSucursalResponse)
+def obtener_estado_sucursal_usuario(usuario_id: str, db: Session = Depends(get_db)):
+    """Verifica si el usuario actual posee un establecimiento y una cuponera configurada."""
+    usuario = db.query(models.Usuario).filter(models.Usuario.id == usuario_id).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-@router.patch("/establishments/{establishment_id}/validate")
-def validate_establishment(
-    establishment_id: str,
-    status: str = Body(..., embed=True), # Espera 'aprobado' o 'rechazado'
-    db: Session = Depends(get_db)
-):
-    """Aprueba o bloquea un establecimiento usando el campo 'activo'."""
-    establecimiento = db.query(Establecimiento).filter(Establecimiento.id == establishment_id).first()
-    
+    rol_str = usuario.rol.value if hasattr(usuario.rol, 'value') else str(usuario.rol)
+    establecimiento = db.query(models.Establecimiento).filter(models.Establecimiento.propietario_id == usuario_id).first()
+
     if not establecimiento:
-        raise HTTPException(status_code=404, detail="Establecimiento no encontrado")
-        
-    if status == "aprobado":
-        establecimiento.activo = True
-    elif status == "rechazado":
-        establecimiento.activo = False
-    else:
-        raise HTTPException(status_code=400, detail="Estado no válido. Usa 'aprobado' o 'rechazado'.")
-        
-    db.commit()
-    db.refresh(establecimiento)
-    
+        return {
+            "tiene_sucursal": False,
+            "rol": rol_str,
+            "establecimiento": None,
+            "cuponera_id": None
+        }
+
+    cuponera = db.query(models.Cuponera).filter(models.Cuponera.establecimiento_id == establecimiento.id).first()
+
     return {
-        "message": f"Establecimiento actualizado a {status}",
-        "establishment_id": establecimiento.id,
-        "activo": establecimiento.activo
+        "tiene_sucursal": True,
+        "rol": rol_str,
+        "establecimiento": {
+            "id": establecimiento.id,
+            "propietario_id": establecimiento.propietario_id,
+            "nombre": establecimiento.nombre,
+            "slug": establecimiento.slug,
+            "logo_url": establecimiento.logo_url,
+            "activo": establecimiento.activo,
+            "fecha_creacion": establecimiento.fecha_creacion
+        },
+        "cuponera_id": cuponera.id if cuponera else None
     }
 
-@router.post("/users/{usuario_id}/convert-to-local")
-def convert_user_to_local(
-    usuario_id: str, 
-    nombre_local: str = Body(..., embed=True),
-    db: Session = Depends(get_db)
-):
-    """Atajo para convertir un cliente normal en propietario."""
-    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
-    if not usuario:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    
-    # Usamos la palabra exacta que permite tu base de datos
-    usuario.rol = "propietario"
-
-    # Creamos el local con activo=False (equivalente a pendiente)
-    nuevo_local = Establecimiento(
-        id=str(uuid.uuid4()),
-        nombre=nombre_local,
-        propietario_id=usuario_id,
-        slug=nombre_local.lower().replace(" ", "-") + "-" + str(uuid.uuid4())[:4],
-        activo=False 
-    )
-    
-    db.add(nuevo_local)
-    db.commit()
-    db.refresh(nuevo_local)
-    
-    return {
-        "mensaje": "¡Ahora eres un propietario!", 
-        "nuevo_rol": usuario.rol,
-        "establishment_id": nuevo_local.id
-    }
-
-@router.post("/establishments")
-def create_test_establishment(
-    nombre: str = Body(..., embed=True),
-    propietario_id: str = Body(..., embed=True),
-    db: Session = Depends(get_db)
-):
-    """Crea un nuevo establecimiento en estado pendiente para pruebas."""
-    nuevo_local = Establecimiento(
-        id=str(uuid.uuid4()), # Genera el ID automáticamente
-        nombre=nombre,
-        propietario_id=propietario_id,
-        slug=nombre.lower().replace(" ", "-") + "-" + str(uuid.uuid4())[:4], # Genera un slug válido
-        activo=False
-    )
-    
-    if hasattr(nuevo_local, 'status'):
-        nuevo_local.status = "pendiente"
-
-    db.add(nuevo_local)
-    db.commit()
-    db.refresh(nuevo_local)
-    return nuevo_local
-
-@router.post("/users/{usuario_id}/convert-to-local")
-def convert_user_to_local(
-    usuario_id: str, 
-    nombre_local: str = Body(..., embed=True),
-    db: Session = Depends(get_db)
-):
-    """Atajo para convertir un cliente normal en dueño de un establecimiento."""
-    # 1. Buscamos a tu usuario
-    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
-    if not usuario:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    
-    # 2. Le cambiamos el rol
-    usuario.rol = "local"
-
-    # 3. Le creamos su local en estado pendiente
-    nuevo_local = Establecimiento(
-        id=str(uuid.uuid4()),
-        nombre=nombre_local,
-        propietario_id=usuario_id,
-        slug=nombre_local.lower().replace(" ", "-") + "-" + str(uuid.uuid4())[:4],
-        activo=False
-    )
-    
-    if hasattr(nuevo_local, 'status'):
-        nuevo_local.status = "pendiente"
-
-    db.add(nuevo_local)
-    db.commit()
-    db.refresh(nuevo_local)
-    
-    return {
-        "mensaje": "¡Ahora eres un local!", 
-        "nuevo_rol": usuario.rol,
-        "establishment_id": nuevo_local.id
-    }
-
-# 1. ENDPOINT PARA EL USUARIO: Enviar la solicitud (Mock)
-@router.post("/solicitudes")
-def crear_solicitud_negocio(
-    usuario_id: str = Body(..., embed=True),
-    nombre_negocio: str = Body(..., embed=True),
-    db: Session = Depends(get_db)
-):
-    """Crea una solicitud de establecimiento. Simula la recepción de documentos."""
-    
-    # Verificamos si ya tiene una solicitud pendiente
-    solicitud_existente = db.query(SolicitudEstablecimiento).filter(
-        SolicitudEstablecimiento.usuario_id == usuario_id,
-        SolicitudEstablecimiento.estado == EstadoSolicitud.PENDIENTE
+@router.post("/solicitudes", response_model=schemas.MensajeResponse)
+def crear_solicitud_negocio(datos: schemas.CrearSolicitudRequest, db: Session = Depends(get_db)):
+    """Crea una solicitud formal para convertir una cuenta de cliente en sucursal/propietario."""
+    solicitud_existente = db.query(models.SolicitudEstablecimiento).filter(
+        models.SolicitudEstablecimiento.usuario_id == datos.usuario_id,
+        models.SolicitudEstablecimiento.estado == models.EstadoSolicitud.PENDIENTE.value
     ).first()
     
     if solicitud_existente:
-        raise HTTPException(status_code=400, detail="Ya tienes una solicitud en proceso.")
+        raise HTTPException(status_code=400, detail="Ya tienes una solicitud pendiente de aprobación.")
 
-    nueva_solicitud = SolicitudEstablecimiento(
+    nueva_solicitud = models.SolicitudEstablecimiento(
         id=str(uuid.uuid4()),
-        usuario_id=usuario_id,
-        nombre_negocio=nombre_negocio,
-        documentos_url="https://mi-servidor.com/archivos/documento_simulado.pdf", # URL Simulada
-        estado=EstadoSolicitud.PENDIENTE
+        usuario_id=datos.usuario_id,
+        nombre_negocio=datos.nombre_negocio,
+        documentos_url=datos.documentos_url or "https://servidor.com/docs/default.pdf",
+        estado=models.EstadoSolicitud.PENDIENTE.value
     )
     
     db.add(nueva_solicitud)
     db.commit()
-    db.refresh(nueva_solicitud)
     
-    return {"mensaje": "Solicitud enviada correctamente", "solicitud_id": nueva_solicitud.id}
+    return schemas.MensajeResponse(mensaje="Solicitud enviada exitosamente. En espera de revisión.")
 
-# 2. ENDPOINT PARA EL ADMIN: Aprobar la solicitud y crear el local automáticamente
-@router.patch("/solicitudes/{solicitud_id}/aprobar")
-def aprobar_solicitud_negocio(
-    solicitud_id: str,
-    db: Session = Depends(get_db)
-):
-    """El administrador aprueba la solicitud. El sistema crea el local y cambia el rol del usuario."""
-    solicitud = db.query(SolicitudEstablecimiento).filter(SolicitudEstablecimiento.id == solicitud_id).first()
-    
+@router.patch("/solicitudes/{solicitud_id}/aprobar", response_model=schemas.MensajeResponse)
+def aprobar_solicitud_negocio(solicitud_id: str, db: Session = Depends(get_db)):
+    """Aprobación por admin: Actualiza rol, genera Establecimiento, Cuponera e registro de DisenoCuponera."""
+    solicitud = db.query(models.SolicitudEstablecimiento).filter(models.SolicitudEstablecimiento.id == solicitud_id).first()
     if not solicitud:
         raise HTTPException(status_code=404, detail="Solicitud no encontrada")
-    if solicitud.estado != EstadoSolicitud.PENDIENTE:
-        raise HTTPException(status_code=400, detail="La solicitud ya fue procesada")
 
-    # 1. Actualizamos la solicitud
-    solicitud.estado = EstadoSolicitud.APROBADA
+    solicitud.estado = models.EstadoSolicitud.APROBADA.value
 
-    # 2. Buscamos al usuario y le cambiamos el rol
-    usuario = db.query(Usuario).filter(Usuario.id == solicitud.usuario_id).first()
+    usuario = db.query(models.Usuario).filter(models.Usuario.id == solicitud.usuario_id).first()
     if usuario:
-        usuario.rol = "propietario"
+        usuario.rol = models.RolUsuario.PROPIETARIO.value
 
-    # 3. Creamos el Establecimiento oficial y activo
-    nuevo_local = Establecimiento(
+    slug_base = solicitud.nombre_negocio.lower().replace(" ", "-")
+    nuevo_local = models.Establecimiento(
         id=str(uuid.uuid4()),
-        propietario_id=usuario.id,
+        propietario_id=solicitud.usuario_id,
         nombre=solicitud.nombre_negocio,
-        slug=solicitud.nombre_negocio.lower().replace(" ", "-") + "-" + str(uuid.uuid4())[:4],
+        slug=f"{slug_base}-{str(uuid.uuid4())[:4]}",
         activo=True
     )
-    
     db.add(nuevo_local)
+    db.flush()
+
+    nueva_cuponera = models.Cuponera(
+        id=str(uuid.uuid4()),
+        establecimiento_id=nuevo_local.id,
+        titulo=f"Cuponera de Fidelidad - {nuevo_local.nombre}",
+        descripcion_premio="Premio por definir por el comercio",
+        total_sellos_requeridos=6,
+        activa=True
+    )
+    db.add(nueva_cuponera)
+    db.flush()
+
+    nuevo_diseno = models.DisenoCuponera(
+        id=str(uuid.uuid4()),
+        cuponera_id=nueva_cuponera.id,
+        configuracion_ui=None
+    )
+    db.add(nuevo_diseno)
+
     db.commit()
     
-    return {
-        "mensaje": "Solicitud aprobada, usuario convertido a propietario y local creado.",
-        "establishment_id": nuevo_local.id
-    }
+    return schemas.MensajeResponse(mensaje="Solicitud aprobada. Establecimiento, Cuponera y Diseño iniciales creados.")
+
+@router.post("/users/{usuario_id}/convert-to-local", response_model=schemas.MensajeResponse)
+def convert_user_to_local(
+    usuario_id: str, 
+    datos: schemas.ConvertirLocalRequest,
+    db: Session = Depends(get_db)
+):
+    """Atajo directo de desarrollo: Convierte un usuario en propietario y crea sus registros relacionales."""
+    usuario = db.query(models.Usuario).filter(models.Usuario.id == usuario_id).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    usuario.rol = models.RolUsuario.PROPIETARIO.value
+
+    slug_base = datos.nombre_local.lower().replace(" ", "-")
+    nuevo_local = models.Establecimiento(
+        id=str(uuid.uuid4()),
+        nombre=datos.nombre_local,
+        propietario_id=usuario_id,
+        slug=f"{slug_base}-{str(uuid.uuid4())[:4]}",
+        activo=True 
+    )
+    db.add(nuevo_local)
+    db.flush()
+
+    nueva_cuponera = models.Cuponera(
+        id=str(uuid.uuid4()),
+        establecimiento_id=nuevo_local.id,
+        titulo=f"Cuponera de Fidelidad - {nuevo_local.nombre}",
+        descripcion_premio="Premio por definir por el negocio",
+        total_sellos_requeridos=6,
+        activa=True
+    )
+    db.add(nueva_cuponera)
+    db.flush()
+
+    nuevo_diseno = models.DisenoCuponera(
+        id=str(uuid.uuid4()),
+        cuponera_id=nueva_cuponera.id,
+        configuracion_ui=None
+    )
+    db.add(nuevo_diseno)
+
+    db.commit()
+    
+    return schemas.MensajeResponse(mensaje="Usuario convertido a propietario con cuponera y diseño asignados.")
