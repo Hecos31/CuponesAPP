@@ -1,14 +1,25 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart'; // ✅ Importado para usar debugPrint
 import 'package:http/http.dart' as http;
-import '../../../core/network/api_config.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/network/api_config.dart';
 import '../models/cuponera_lista_model.dart';
 
 class CuponerasService {
-  // 1. Obtener la lista de cuponeras disponibles
+  // 1. Obtener la lista de cuponeras disponibles (excluyendo las ya suscritas por el usuario)
   Future<List<CuponeraListaModel>> obtenerCuponerasDisponibles() async {
     try {
-      final url = Uri.parse('${ApiConfig.baseUrl}/cuponeras/');
+      final prefs = await SharedPreferences.getInstance();
+      final usuarioId = prefs.getString('usuario_id') ?? '';
+
+      debugPrint('🔎 [FILTRO CUPONERAS] Consultando feed para usuario_id: "$usuarioId"');
+
+      // Enviamos el usuario_id como parámetro para que el backend filtre las ya adquiridas
+      final url = Uri.parse('${ApiConfig.baseUrl}/cuponeras/?usuario_id=$usuarioId');
       final response = await http.get(url);
+
+      debugPrint('🌐 [API] Status code cuponeras: ${response.statusCode}');
+      debugPrint('📦 [API] Respuesta del servidor: ${response.body}');
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
@@ -17,6 +28,7 @@ class CuponerasService {
         throw Exception('Error al cargar las cuponeras: ${response.statusCode}');
       }
     } catch (e) {
+      debugPrint('❌ [ERROR] en obtenerCuponerasDisponibles: $e');
       throw Exception('Error de conexión: $e');
     }
   }
@@ -51,8 +63,6 @@ class CuponerasService {
       throw Exception('Error al guardar: $e');
     }
   }
-
-
 
   Future<Map<String, dynamic>> obtenerCuponeraDetalle(String cuponeraId) async {
     try {

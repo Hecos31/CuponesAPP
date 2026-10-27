@@ -21,8 +21,11 @@ class CuponeraListaModel {
       titulo: json['titulo'] ?? 'Sin título',
       descripcionPremio: json['descripcion_premio'] ?? '',
       totalSellosRequeridos: json['total_sellos_requeridos'] ?? 6,
-      establecimientoNombre: json['establecimiento_nombre'] ?? 'Establecimiento',
-      diseno: json['diseno']?['configuracion_ui'],
+      establecimientoNombre:
+          json['establecimiento_nombre'] ?? 'Establecimiento',
+      diseno: json['configuracion_ui'] is Map
+          ? Map<String, dynamic>.from(json['configuracion_ui'])
+          : null,
     );
   }
 }

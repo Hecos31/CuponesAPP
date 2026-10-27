@@ -10,15 +10,23 @@ from app.schemas import schemas
 router = APIRouter()
 
 @router.get("/", response_model=List[schemas.CuponeraListResponse])
-def listar_cuponeras(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
-    """Obtiene el catálogo público de cuponeras activas con datos del negocio y diseño Server-Driven UI."""
-    cuponeras = (
-        db.query(models.Cuponera)
-        .filter(models.Cuponera.activa == True)
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
+def listar_cuponeras(skip: int = 0, limit: int = 20, usuario_id: str = None, db: Session = Depends(get_db)):
+    """Obtiene el catálogo público de cuponeras activas excluyendo las que el usuario ya tiene suscritas."""
+    
+    # Subconsulta con los IDs de cuponeras a las que el usuario ya está suscrito
+    cuponeras_excluidas = []
+    if usuario_id:
+        suscripciones = db.query(models.ProgresoUsuario.cuponera_id).filter(
+            models.ProgresoUsuario.usuario_id == usuario_id
+        ).all()
+        cuponeras_excluidas = [s[0] for s in suscripciones]
+
+    query = db.query(models.Cuponera).filter(models.Cuponera.activa == True)
+    
+    if cuponeras_excluidas:
+        query = query.filter(~models.Cuponera.id.in_(cuponeras_excluidas))
+
+    cuponeras = query.offset(skip).limit(limit).all()
 
     resultados = []
     for c in cuponeras:
@@ -39,7 +47,6 @@ def listar_cuponeras(skip: int = 0, limit: int = 20, db: Session = Depends(get_d
         })
 
     return resultados
-
 
 @router.get("/{cuponera_id}", response_model=schemas.CuponeraListResponse)
 def obtener_cuponera(cuponera_id: str, db: Session = Depends(get_db)):
@@ -163,3 +170,5 @@ def obtener_mis_suscripciones(usuario_id: str, db: Session = Depends(get_db)):
             })
 
     return respuesta
+
+
