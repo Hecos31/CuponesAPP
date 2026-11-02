@@ -14,9 +14,9 @@ class RolUsuario(str, enum.Enum):
     CLIENTE = "cliente"
 
 class EstadoSolicitud(str, enum.Enum):
-    PENDIENTE = "PENDIENTE"
-    APROBADA = "APROBADA"
-    RECHAZADA = "RECHAZADA"
+    PENDIENTE = "pendiente"
+    APROBADA = "aprobada"
+    RECHAZADA = "rechazada"
 
 class EstadoProgreso(str, enum.Enum):
     ACTIVO = "ACTIVO"
@@ -58,7 +58,7 @@ class Establecimiento(Base):
 
 
 class SolicitudEstablecimiento(Base):
-    __tablename__ = "solicitudes_establecimientos"
+    __tablename__ = "solicitudes_establecimiento"
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     usuario_id = Column(String(36), ForeignKey("usuarios.id"), nullable=False)
