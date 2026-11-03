@@ -4,10 +4,18 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../models/elemento_diseno.dart';
 
 class ElementoVista extends StatelessWidget {
-  const ElementoVista({super.key, required this.elemento, required this.escala});
+  const ElementoVista({
+    super.key,
+    required this.elemento,
+    required this.escala,
+    this.onTapQr,
+    this.isLoading = false, // 🔑 NUEVA PROPIEDAD
+  });
 
   final ElementoDiseno elemento;
   final double escala;
+  final VoidCallback? onTapQr;
+  final bool isLoading; // 🔑 ESTADO DE CARGA
 
   TextStyle _estilo() {
     final baseStyle = TextStyle(
@@ -23,30 +31,44 @@ class ElementoVista extends StatelessWidget {
   }
 
   BoxDecoration _decoracionBase() {
-    final bool esCirculo = elemento.tipo == TipoElemento.forma && elemento.forma == 'circulo';
-    final bool esTriangulo = elemento.tipo == TipoElemento.forma && elemento.forma == 'triangulo';
+    final bool esCirculo =
+        elemento.tipo == TipoElemento.forma && elemento.forma == 'circulo';
+    final bool esTriangulo =
+        elemento.tipo == TipoElemento.forma && elemento.forma == 'triangulo';
 
     return BoxDecoration(
       color: esTriangulo ? Colors.transparent : elemento.colorFondo,
       shape: esCirculo ? BoxShape.circle : BoxShape.rectangle,
-      borderRadius: esCirculo ? null : BorderRadius.circular(elemento.radioBorde * escala),
+      borderRadius: esCirculo
+          ? null
+          : BorderRadius.circular(elemento.radioBorde * escala),
       border: (elemento.grosorBorde > 0 && !esTriangulo)
-          ? Border.all(color: elemento.colorBorde, width: elemento.grosorBorde * escala) 
+          ? Border.all(
+              color: elemento.colorBorde, width: elemento.grosorBorde * escala)
           : null,
-      boxShadow: elemento.conSombra 
-          ? [BoxShadow(color: Colors.black38, blurRadius: 6 * escala, offset: Offset(0, 3 * escala))] 
+      boxShadow: elemento.conSombra
+          ? [
+              BoxShadow(
+                color: Colors.black38,
+                blurRadius: 6 * escala,
+                offset: Offset(0, 3 * escala),
+              )
+            ]
           : null,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: elemento.ancho * escala,
-      height: elemento.alto * escala,
-      decoration: _decoracionBase(),
-      child: Center(
-        child: _contenidoInterno(),
+    return GestureDetector(
+      onTap: elemento.tipo == TipoElemento.botonQr && !isLoading ? onTapQr : null,
+      child: Container(
+        width: elemento.ancho * escala,
+        height: elemento.alto * escala,
+        decoration: _decoracionBase(),
+        child: Center(
+          child: _contenidoInterno(),
+        ),
       ),
     );
   }
@@ -54,11 +76,31 @@ class ElementoVista extends StatelessWidget {
   Widget _contenidoInterno() {
     switch (elemento.tipo) {
       case TipoElemento.texto:
-      case TipoElemento.botonQr:
       case TipoElemento.sello:
-        return Text(elemento.texto, style: _estilo(), textAlign: TextAlign.center);
+        return Text(elemento.texto,
+            style: _estilo(), textAlign: TextAlign.center);
+      
+      case TipoElemento.botonQr:
+        // 🔑 SI ESTÁ CARGANDO, MOSTRAMOS EL SPINNER CON EL COLOR DEL TEXTO
+        if (isLoading) {
+          return SizedBox(
+            width: 20 * escala,
+            height: 20 * escala,
+            child: CircularProgressIndicator(
+              color: elemento.color,
+              strokeWidth: 2.5 * escala,
+            ),
+          );
+        }
+        return Text(
+          elemento.texto,
+          style: _estilo(),
+          textAlign: TextAlign.center,
+        );
+
       case TipoElemento.svg:
-        if (elemento.svgContenido != null && elemento.svgContenido!.isNotEmpty) {
+        if (elemento.svgContenido != null &&
+            elemento.svgContenido!.isNotEmpty) {
           return SvgPicture.string(
             elemento.svgContenido!,
             fit: BoxFit.contain,
@@ -73,7 +115,7 @@ class ElementoVista extends StatelessWidget {
             size: Size.infinite,
           );
         }
-        return const SizedBox.shrink(); 
+        return const SizedBox.shrink();
     }
   }
 }
@@ -84,7 +126,9 @@ class _TrianguloPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color..style = PaintingStyle.fill;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
     final path = Path()
       ..moveTo(size.width / 2, 0)
       ..lineTo(size.width, size.height)

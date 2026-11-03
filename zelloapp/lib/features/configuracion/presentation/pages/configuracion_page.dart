@@ -166,9 +166,32 @@ class _ConfiguracionPageState extends State<ConfiguracionPage> {
                 const SizedBox(height: 16),
                 
                 // Botón del escáner (Solo visible si ya cuenta con sucursal aprobada)
+                // Botón del escáner (Solo visible si ya cuenta con sucursal aprobada)
                 if (_esSucursal)
                   OutlinedButton.icon(
-                    onPressed: () => context.push('/scanner'),
+                    onPressed: () {
+                      // Obtenemos el ID del comercio/usuario logueado
+                      final miUsuarioId = SesionUsuario().usuarioId;
+                      
+                      if (_cuponeraIdReal != null && miUsuarioId != null) {
+                        // Enviamos los IDs reales a la ruta del escáner
+                        context.push(
+                          '/escaner', // ⚠️ Asegúrate de que coincida con la ruta definida en tu GoRouter ('/escaner' o '/scanner')
+                          extra: {
+                            'cuponeraId': _cuponeraIdReal,
+                            'emisorId': miUsuarioId,
+                          },
+                        );
+                      } else {
+                        // Manejo de error si los IDs aún no cargan
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('No se pudieron obtener los datos de la cuponera.'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    },
                     icon: const Icon(Icons.camera_alt),
                     label: const Text('Escanear QR de Cliente'),
                   ),

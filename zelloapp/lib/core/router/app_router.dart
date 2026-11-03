@@ -19,10 +19,11 @@ import '../../features/editor/presentation/pages/editor_page.dart';
 // --- IMPORTS DE CUPONERAS ---
 import '../../features/cuponeras/presentation/pages/mis_cuponeras_page.dart';
 import '../../features/cuponeras/presentation/pages/cuponera_detail_page.dart';
-import '../../features/cuponeras/presentation/pages/cuponeras_list_page.dart'; 
+import '../../features/cuponeras/presentation/pages/cuponeras_list_page.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
-final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> _shellNavigatorKey =
+    GlobalKey<NavigatorState>();
 
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
@@ -32,12 +33,9 @@ final GoRouter appRouter = GoRouter(
     // RUTAS GLOBALES / PANTALLA COMPLETA (Fuera del Shell)
     // ======================================================
     GoRoute(path: '/', redirect: (context, state) => '/login'),
-    
-    GoRoute(
-      path: '/login', 
-      builder: (context, state) => const LoginPage(),
-    ),
-    
+
+    GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+
     GoRoute(
       path: '/register',
       builder: (context, state) => const RegisterPage(),
@@ -76,43 +74,48 @@ final GoRouter appRouter = GoRouter(
           path: '/descubrir',
           builder: (context, state) => const CuponerasListPage(),
         ),
-        
+
         // Cuponeras a las que el cliente ya se suscribió
         GoRoute(
           path: '/mis-cuponeras',
           builder: (context, state) => const MisCuponerasPage(),
         ),
-        
+
         GoRoute(
           path: '/busqueda',
           builder: (context, state) => const BusquedaPage(),
         ),
-        
-        GoRoute(
-          path: '/mapa', 
-          builder: (context, state) => const MapaPage(),
-        ),
-        
+
+        GoRoute(path: '/mapa', builder: (context, state) => const MapaPage()),
+
         GoRoute(
           path: '/configuracion',
           builder: (context, state) => const ConfiguracionPage(),
         ),
-        
+
         GoRoute(
-          path: '/scanner',
-          builder: (context, state) => const ScannerPage(),
+          path: '/escaner',
+          builder: (context, state) {
+            final Map<String, dynamic> extras =
+                (state.extra as Map<String, dynamic>?) ?? {};
+
+            final String cuponeraId = extras['cuponeraId'] ?? '';
+            final String emisorId = extras['emisorId'] ?? '';
+
+            return ScannerPage(cuponeraId: cuponeraId, emisorId: emisorId);
+          },
         ),
-        
+
         GoRoute(
           path: '/recuperar-password',
           builder: (context, state) => const RecuperarPasswordPage(),
         ),
-        
+
         GoRoute(
           path: '/perfil',
           builder: (context, state) => const PerfilUsuarioPage(),
         ),
-        
+
         // Editor visual del comercio (Server-Driven UI)
         GoRoute(
           path: '/editor_cuponera',

@@ -11,12 +11,10 @@ router = APIRouter()
 def generar_qr_cliente(usuario_id: str, db: Session = Depends(get_db)):
     """Emite un token temporal de identidad para el cliente."""
     
-    # Verifica la existencia del usuario en la base de datos antes de emitir un token
     usuario = db.query(models.Usuario).filter(models.Usuario.id == usuario_id).first()
     if not usuario:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
 
-    # Define el tiempo de vida del token y procede con la encriptación JWT
     minutos_validez = 5
     token = security.generar_token_cliente(usuario_id, minutos_validez)
     
@@ -92,3 +90,17 @@ def otorgar_sello(request: schemas.OtorgarSelloRequest, db: Session = Depends(ge
         estado=progreso.estado,
         fecha_sello=nuevo_sello.fecha_sello
     )
+
+
+@router.get("/progreso/{cuponera_id}")
+def consultar_progreso_cliente(cuponera_id: str, usuario_id: str, db: Session = Depends(get_db)):
+    """Devuelve los sellos actuales de un cliente en una cuponera específica."""
+    progreso = db.query(models.ProgresoUsuario).filter(
+        models.ProgresoUsuario.usuario_id == usuario_id,
+        models.ProgresoUsuario.cuponera_id == cuponera_id
+    ).first()
+    
+    return {
+        "sellos_acumulados": progreso.sellos_acumulados if progreso else 0,
+        "estado": progreso.estado.value if progreso else "INACTIVO"
+    }

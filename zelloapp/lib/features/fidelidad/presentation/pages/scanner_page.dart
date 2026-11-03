@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import '../..//data/datasources/sello_remote_data_source.dart';
+import '../../data/datasources/sello_remote_data_source.dart';
 
 class ScannerPage extends StatefulWidget {
-  const ScannerPage({super.key});
+  // 🔑 Ahora recibe los IDs reales desde la navegación
+  final String cuponeraId;
+  final String emisorId;
+
+  const ScannerPage({
+    super.key,
+    required this.cuponeraId,
+    required this.emisorId,
+  });
 
   @override
   State<ScannerPage> createState() => _ScannerPageState();
@@ -13,9 +21,6 @@ class ScannerPage extends StatefulWidget {
 class _ScannerPageState extends State<ScannerPage> {
   final SelloRemoteDataSource _dataSource = SelloRemoteDataSource();
   bool _isProcessing = false;
-
-  final String _cuponeraPruebaId = "c9b8a7f6-e5d4-3c2b-1a0f-9e8d7c6b5a4f";
-  final String _emisorPruebaId = "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d";
 
   Future<void> _procesarCodigoQR(String token) async {
     if (_isProcessing) return;
@@ -27,8 +32,8 @@ class _ScannerPageState extends State<ScannerPage> {
     try {
       final result = await _dataSource.otorgarSello(
         tokenCliente: token,
-        cuponeraId: _cuponeraPruebaId,
-        emisorId: _emisorPruebaId,
+        cuponeraId: widget.cuponeraId, // Usamos el ID real que se pasó a la vista
+        emisorId: widget.emisorId,     // Usamos el ID del comercio logueado
       );
       
       if (mounted) {
@@ -38,7 +43,7 @@ class _ScannerPageState extends State<ScannerPage> {
             backgroundColor: Colors.green,
           ),
         );
-        context.pop();
+        context.pop(); // Cierra el escáner tras el éxito
       }
     } catch (e) {
       if (mounted) {
