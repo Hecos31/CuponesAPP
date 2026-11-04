@@ -116,6 +116,39 @@ class EstablecimientoUpdate(BaseModel):
 
 
 # ==========================================
+# 6. LOCALIZACIÓN Y SUGERENCIAS CERCANAS (SPRINT 4 - FG)
+# ==========================================
+class CoordenadasLocalUpdate(BaseModel):
+    latitud: float
+    longitud: float
+    direccion: Optional[str] = None
+
+class LocalDistanciaResponse(BaseModel):
+    establecimiento_id: str
+    nombre: str
+    slug: str
+    logo_url: Optional[str] = None
+    direccion: Optional[str] = None
+    latitud: float
+    longitud: float
+    distancia_km: float
+    distancia_metros: int
+    tiene_cuponera: bool = False
+    cuponera_id: Optional[str] = None
+    titulo_cuponera: Optional[str] = None
+    descripcion_premio: Optional[str] = None
+    total_sellos_requeridos: Optional[int] = None
+    configuracion_ui: Optional[Any] = None
+
+class FiltroRadioResponse(BaseModel):
+    latitud_origen: float
+    longitud_origen: float
+    radio_km: float
+    total_encontrados: int
+    locales: List[LocalDistanciaResponse]
+
+
+# ==========================================
 # 3. CUPONERAS & DISEÑO (SERVER-DRIVEN UI)
 # ==========================================
 class CuponeraBase(BaseModel):

@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.api.endpoints import cuponeras, canjes, usuarios, auth, admin, solicitudes, establecimientos
+from app.api.endpoints import cuponeras, canjes, usuarios, auth, admin, solicitudes, establecimientos, localizacion
 
 app = FastAPI(title="API Cupones de Fidelidad")
 
@@ -27,6 +27,7 @@ app.include_router(usuarios.router, prefix="/api/v1/usuarios", tags=["Usuarios"]
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Autenticación"])
 app.include_router(solicitudes.router, prefix="/api/v1/solicitudes", tags=["Solicitudes y Verificación (FG)"])
 app.include_router(establecimientos.router, prefix="/api/v1/establecimientos", tags=["Sucursales / Establecimientos"])
+app.include_router(localizacion.router, prefix="/api/v1/localizacion", tags=["Localización y Sugerencias Cercanas (FG)"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Administración"])
 
 @app.get("/")
