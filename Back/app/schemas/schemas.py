@@ -92,6 +92,28 @@ class SimularAltaSucursalResponse(BaseModel):
     establecimiento_id: str
     cuponera_id: str
 
+class SolicitudEstablecimientoUpdateEstado(BaseModel):
+    estado: str  # PENDIENTE, APROBADA, RECHAZADA
+
+class UploadDocumentoResponse(BaseModel):
+    url: str
+    filename: str
+    tipo_documento: str = "INE"
+    tamano_bytes: int = 0
+    mensaje: str = "Documento probatorio almacenado de forma segura"
+
+class EstablecimientoCreate(BaseModel):
+    propietario_id: str
+    nombre: str
+    slug: Optional[str] = None
+    logo_url: Optional[str] = None
+    activo: bool = True
+
+class EstablecimientoUpdate(BaseModel):
+    nombre: Optional[str] = None
+    logo_url: Optional[str] = None
+    activo: Optional[bool] = None
+
 
 # ==========================================
 # 3. CUPONERAS & DISEÑO (SERVER-DRIVEN UI)

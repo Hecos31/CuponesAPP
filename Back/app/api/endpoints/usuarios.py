@@ -271,9 +271,27 @@ def obtener_estado_sucursal(usuario_id: str, db: Session = Depends(get_db)):
         if cuponera:
             cuponera_id = cuponera.id
 
+    from app.models.models import SolicitudEstablecimiento
+    ultima_solicitud = (
+        db.query(SolicitudEstablecimiento)
+        .filter(SolicitudEstablecimiento.usuario_id == usuario.id)
+        .order_by(SolicitudEstablecimiento.fecha_solicitud.desc())
+        .first()
+    )
+    estado_solicitud = None
+    if ultima_solicitud:
+        estado_solicitud = (
+            ultima_solicitud.estado.value
+            if hasattr(ultima_solicitud.estado, "value")
+            else str(ultima_solicitud.estado)
+        )
+
     return {
         "rol": usuario.rol,
         "es_sucursal": establecimiento is not None,
         "establecimiento_id": establecimiento.id if establecimiento else None,
-        "cuponera_id": cuponera_id
+        "cuponera_id": cuponera_id,
+        "tiene_solicitud": ultima_solicitud is not None,
+        "solicitud_id": ultima_solicitud.id if ultima_solicitud else None,
+        "estado_solicitud": estado_solicitud,
     }
