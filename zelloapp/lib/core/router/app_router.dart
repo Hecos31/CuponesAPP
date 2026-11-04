@@ -86,7 +86,13 @@ final GoRouter appRouter = GoRouter(
           builder: (context, state) => const BusquedaPage(),
         ),
 
-        GoRoute(path: '/mapa', builder: (context, state) => const MapaPage()),
+        GoRoute(
+          path: '/mapa',
+          builder: (context, state) {
+            final localId = state.extra as String?;
+            return MapaPage(localSeleccionadoIdInicial: localId);
+          },
+        ),
 
         GoRoute(
           path: '/configuracion',

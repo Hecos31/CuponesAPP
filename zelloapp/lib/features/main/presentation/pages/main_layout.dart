@@ -23,30 +23,62 @@ class _MainLayoutState extends State<MainLayout> {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
       setState(() {
-        _isEstablecimiento = prefs.getBool('is_establecimiento') ?? false; 
+        _isEstablecimiento = prefs.getBool('is_establecimiento') ?? false;
       });
     }
   }
 
   void _onItemTapped(int index, BuildContext context) {
     switch (index) {
-      case 0: context.go('/descubrir'); break; // Feed general
-      case 1: context.go('/mis-cuponeras'); break; // Suscripciones del usuario
-      case 2: context.go('/busqueda'); break;
-      case 3: context.go('/configuracion'); break;
-      case 4: context.go('/editor_cuponera'); break; // Panel de administración del comercio
+      case 0:
+        context.go('/descubrir');
+        break; // Feed general + Banners + Sugerencias Cercanas
+      case 1:
+        context.go('/mis-cuponeras');
+        break; // Suscripciones del usuario
+      case 2:
+        context.go('/mapa');
+        break; // Mapa interactivo de locales
+      case 3:
+        context.go('/busqueda');
+        break;
+      case 4:
+        context.go('/configuracion');
+        break;
+      case 5:
+        context.go('/editor_cuponera');
+        break; // Panel de administración del comercio
     }
   }
 
- @override
+  @override
   Widget build(BuildContext context) {
     final navItems = <BottomNavigationBarItem>[
-      const BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Descubrir'),
-      const BottomNavigationBarItem(icon: Icon(Icons.loyalty), label: 'Mis Cuponeras'),
-      const BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Buscar'),
-      const BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Ajustes'),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.explore),
+        label: 'Descubrir',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.loyalty),
+        label: 'Mis Cuponeras',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.map_outlined),
+        label: 'Mapa',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.search),
+        label: 'Buscar',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.settings),
+        label: 'Ajustes',
+      ),
       if (_isEstablecimiento)
-        const BottomNavigationBarItem(icon: Icon(Icons.storefront), label: 'Mi Local'),
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.storefront),
+          label: 'Mi Local',
+        ),
     ];
 
     int currentIndex = _calculateSelectedIndex(context);
@@ -59,7 +91,7 @@ class _MainLayoutState extends State<MainLayout> {
         selectedItemColor: Colors.blue.shade700,
         unselectedItemColor: Colors.grey,
         items: navItems,
-        currentIndex: currentIndex, 
+        currentIndex: currentIndex,
         onTap: (index) => _onItemTapped(index, context),
       ),
     );
@@ -69,9 +101,13 @@ class _MainLayoutState extends State<MainLayout> {
     final String location = GoRouterState.of(context).uri.path;
     if (location.startsWith('/descubrir')) return 0;
     if (location.startsWith('/mis-cuponeras')) return 1;
-    if (location.startsWith('/busqueda')) return 2;
-    if (location.startsWith('/configuracion')) return 3;
-    if (location.startsWith('/editor_cuponera') || location.startsWith('/mi-local')) return 4; 
+    if (location.startsWith('/mapa')) return 2;
+    if (location.startsWith('/busqueda')) return 3;
+    if (location.startsWith('/configuracion')) return 4;
+    if (location.startsWith('/editor_cuponera') ||
+        location.startsWith('/mi-local')) {
+      return 5;
+    }
     return 0;
   }
 }

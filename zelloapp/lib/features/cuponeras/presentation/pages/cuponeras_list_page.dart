@@ -5,8 +5,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../../core/network/api_config.dart';
 
+import '../../../mapa/models/local_mapa_model.dart';
 import '../../models/cuponera_lista_model.dart';
 import '../../services/cuponeras_service.dart';
+import '../widgets/carrusel_banners_minimalista.dart';
+import '../widgets/sugerencias_cercanas_section.dart';
 
 class CuponerasListPage extends StatefulWidget {
   const CuponerasListPage({super.key});
@@ -106,6 +109,65 @@ class _CuponerasListPageState extends State<CuponerasListPage> {
     }
   }
 
+  List<BannerPromocionalItem> _construirBanners(
+    BuildContext context,
+    List<CuponeraListaModel> cuponeras,
+  ) {
+    return [
+      BannerPromocionalItem(
+        etiqueta: 'Destacado de hoy',
+        titulo: cuponeras.isNotEmpty
+            ? cuponeras.first.establecimientoNombre
+            : '2x1 en Sellos de Bienvenida',
+        subtitulo: cuponeras.isNotEmpty
+            ? 'Premio: ${cuponeras.first.descripcionPremio}'
+            : 'Únete hoy a tus cafeterías favoritas y suma tu primer sello.',
+        textoAccion: cuponeras.isNotEmpty ? 'Ver beneficio' : 'Explorar',
+        icono: Icons.local_cafe_rounded,
+        colorFondo: const Color(0xFFEFF6FF),
+        colorAcento: const Color(0xFF2563EB),
+        onTap: () {
+          if (cuponeras.isNotEmpty) {
+            final c = cuponeras.first;
+            context.push(
+              '/cuponeras/detalle',
+              extra: {
+                'id': c.id,
+                'establecimiento_nombre': c.establecimientoNombre,
+                'titulo_cuponera': c.titulo,
+                'descripcion_premio': c.descripcionPremio,
+                'total_sellos_requeridos': c.totalSellosRequeridos,
+                'configuracion_ui': c.diseno,
+              },
+            );
+          }
+        },
+      ),
+      BannerPromocionalItem(
+        etiqueta: 'Cerca de ti',
+        titulo: 'Locales aliados en tu zona',
+        subtitulo:
+            'Explora el mapa interactivo y encuentra recompensas a pocos metros.',
+        textoAccion: 'Abrir mapa',
+        icono: Icons.map_rounded,
+        colorFondo: const Color(0xFFF0FDF4),
+        colorAcento: const Color(0xFF16A34A),
+        onTap: () => context.go('/mapa'),
+      ),
+      BannerPromocionalItem(
+        etiqueta: 'Recompensas VIP',
+        titulo: 'Acumula sellos con QR',
+        subtitulo:
+            'Muestra tu código en caja en cada visita y desbloquea premios gratis.',
+        textoAccion: 'Mis cuponeras',
+        icono: Icons.qr_code_rounded,
+        colorFondo: const Color(0xFFFFF7ED),
+        colorAcento: const Color(0xFFEA580C),
+        onTap: () => context.go('/mis-cuponeras'),
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -113,6 +175,11 @@ class _CuponerasListPageState extends State<CuponerasListPage> {
       appBar: AppBar(
         title: const Text('Descubrir Cuponeras'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.map_outlined),
+            tooltip: 'Mapa de locales',
+            onPressed: () => context.go('/mapa'),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Actualizar',
@@ -124,53 +191,145 @@ class _CuponerasListPageState extends State<CuponerasListPage> {
       body: FutureBuilder<List<CuponeraListaModel>>(
         future: _futureCuponeras,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+          final cargando = snapshot.connectionState == ConnectionState.waiting;
+          final hayError = snapshot.hasError;
+          final cuponeras = snapshot.data ?? <CuponeraListaModel>[];
+          final localesCercanos = construirListaLocalesCercanos(cuponeras);
 
-          if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Text(
-                  'No se pudieron cargar las cuponeras.\nVerifica tu conexión.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey.shade600),
+          return RefreshIndicator(
+            onRefresh: () async => _cargarCuponeras(),
+            child: CustomScrollView(
+              slivers: [
+                // 1. Carrusel de banners promocionales minimalistas
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 12, bottom: 18),
+                    child: CarruselBannersMinimalista(
+                      banners: _construirBanners(context, cuponeras),
+                    ),
+                  ),
                 ),
-              ),
-            );
-          }
 
-          final cuponeras = snapshot.data ?? [];
+                // 2. Vista maquetada "Sugerencias Cercanas"
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 22),
+                    child: SugerenciasCercanasSection(
+                      locales: localesCercanos,
+                      onVerMapaCompleto: () => context.go('/mapa'),
+                      onUbicarEnMapa: (local) {
+                        context.go('/mapa', extra: local.id);
+                      },
+                      onTapLocal: (local) {
+                        context.push(
+                          '/cuponeras/detalle',
+                          extra: local.toCuponeraDetailMap(),
+                        );
+                      },
+                    ),
+                  ),
+                ),
 
-          if (cuponeras.isEmpty) {
-            return const Center(
-              child: Text('No hay cuponeras disponibles por el momento.'),
-            );
-          }
+                // 3. Encabezado del catálogo general de cuponeras
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Todas las Cuponeras',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        if (cuponeras.isNotEmpty)
+                          Text(
+                            '${cuponeras.length} disponibles',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: cuponeras.length,
-            itemBuilder: (context, index) {
-              final cuponera = cuponeras[index];
-              return _CuponeraCardReal(
-                cuponera: cuponera,
-                onTapCard: () {
-                  final Map<String, dynamic> cuponeraMap = {
-                    'id': cuponera.id,
-                    'establecimiento_nombre': cuponera.establecimientoNombre,
-                    'titulo_cuponera': cuponera.titulo,
-                    'descripcion_premio': cuponera.descripcionPremio,
-                    'total_sellos_requeridos': cuponera.totalSellosRequeridos,
-                    // 🔑 ENVIAMOS EL DISEÑO COMPLETO PARA QUE EL DETALLE LO PROCESE PERFECTAMENTE
-                    'configuracion_ui': cuponera.diseno,
-                  };
-                  context.push('/cuponeras/detalle', extra: cuponeraMap);
-                },
-                onTapUnirse: () => _unirseCuponera(cuponera.id),
-              );
-            },
+                // 4. Estado de carga, error o lista de cuponeras del servidor
+                if (cargando)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  )
+                else if (hayError)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 20,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Text(
+                          'No se pudieron sincronizar las cuponeras del servidor.\nExplora las sugerencias cercanas o el mapa interactivo.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
+                      ),
+                    ),
+                  )
+                else if (cuponeras.isEmpty)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.all(24.0),
+                      child: Center(
+                        child: Text(
+                          'No hay cuponeras nuevas por suscribir en este momento.',
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final cuponera = cuponeras[index];
+                        return _CuponeraCardReal(
+                          cuponera: cuponera,
+                          onTapCard: () {
+                            final Map<String, dynamic> cuponeraMap = {
+                              'id': cuponera.id,
+                              'establecimiento_nombre':
+                                  cuponera.establecimientoNombre,
+                              'titulo_cuponera': cuponera.titulo,
+                              'descripcion_premio': cuponera.descripcionPremio,
+                              'total_sellos_requeridos':
+                                  cuponera.totalSellosRequeridos,
+                              'configuracion_ui': cuponera.diseno,
+                            };
+                            context.push(
+                              '/cuponeras/detalle',
+                              extra: cuponeraMap,
+                            );
+                          },
+                          onTapUnirse: () => _unirseCuponera(cuponera.id),
+                        );
+                      }, childCount: cuponeras.length),
+                    ),
+                  ),
+              ],
+            ),
           );
         },
       ),
