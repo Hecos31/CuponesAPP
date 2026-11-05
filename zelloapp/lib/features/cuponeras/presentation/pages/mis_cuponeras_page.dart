@@ -28,10 +28,17 @@ class _MisCuponerasPageState extends State<MisCuponerasPage> {
       final usuarioId = prefs.getString('usuario_id');
       final token = prefs.getString('token');
 
-      if (usuarioId == null) return;
+      if (usuarioId == null) {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        return;
+      }
 
       final url = Uri.parse('${ApiConfig.baseUrl}/cuponeras/mis-suscripciones/$usuarioId');
       final response = await http.get(url, headers: {'Authorization': 'Bearer $token'});
+
+      // 🚨 VALIDACIÓN: Aseguramos que la pantalla siga viva antes de actualizarla
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         setState(() => _suscripciones = jsonDecode(response.body));
@@ -39,7 +46,10 @@ class _MisCuponerasPageState extends State<MisCuponerasPage> {
     } catch (e) {
       debugPrint("Error: $e");
     } finally {
-      setState(() => _isLoading = false);
+      // 🚨 VALIDACIÓN: Incluso en el finally debemos revisar si la pantalla existe
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
