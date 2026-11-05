@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zelloapp/core/network/sesion_usuario.dart';
+import 'package:zelloapp/core/theme/app_theme.dart';
+import 'package:zelloapp/core/widgets/zello_logo.dart';
 import 'package:zelloapp/features/configuracion/services/sucursal_service.dart';
 
 class ConfiguracionPage extends StatefulWidget {
@@ -26,7 +28,6 @@ class _ConfiguracionPageState extends State<ConfiguracionPage> {
     _verificarEstadoEnBaseDeDatos();
   }
 
-  // Consultamos la BD en tiempo real al abrir la pantalla
   Future<void> _verificarEstadoEnBaseDeDatos() async {
     String? usuarioId = SesionUsuario().usuarioId;
     if (usuarioId == null || usuarioId.isEmpty) {
@@ -64,7 +65,7 @@ class _ConfiguracionPageState extends State<ConfiguracionPage> {
         _estadoSolicitud = estadoSol;
         _comentariosEvaluacion = estado['comentarios_evaluacion']?.toString();
         if (estado['rol'] != null) {
-          SesionUsuario().rol = estado['rol']; // Sincronizamos rol real
+          SesionUsuario().rol = estado['rol'];
         }
         _cargando = false;
       });
@@ -74,160 +75,292 @@ class _ConfiguracionPageState extends State<ConfiguracionPage> {
     }
   }
 
+  Widget _buildOptionTile({
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBg,
+    required String title,
+    String? subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppTheme.primaryColor.withValues(alpha: 0.08),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryDeep.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: iconBg,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(icon, color: iconColor, size: 22),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 15,
+            color: AppTheme.darkInk,
+          ),
+        ),
+        subtitle: subtitle != null
+            ? Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    color: AppTheme.mutedSlate,
+                  ),
+                ),
+              )
+            : null,
+        trailing: Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: AppTheme.backgroundColor,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(
+            Icons.chevron_right_rounded,
+            size: 18,
+            color: AppTheme.primaryColor,
+          ),
+        ),
+        onTap: onTap,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Configuración')),
-      body: _cargando
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(16.0),
-              children: [
-                const Text(
-                  'Mi Cuenta',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-
-                ListTile(
-                  leading: const Icon(Icons.person),
-                  title: const Text('Perfil de Usuario'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/perfil'),
-                ),
-
-                const Divider(height: 32),
-
-                const Text(
-                  'Zona para Comercios',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-
-                // LÓGICA DINÁMICA SEGÚN EL ESTADO DE LA SUCURSAL EN LA BD
-                if (!_esSucursal) ...[
-                  ListTile(
-                    leading: const Icon(Icons.storefront, color: Colors.blue),
-                    title: const Text('Registrar mi Local'),
-                    subtitle: const Text('Crea tu cuponera y atrae clientes'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () async {
-                      // 1. Abre la pantalla de datos del local + propietario -> 2. Subida de 3 documentos -> 3. Pantalla de espera de validación
-                      await context.push('/registro-negocio');
-                      _verificarEstadoEnBaseDeDatos();
-                    },
-                  ),
-                  if (_tieneSolicitud)
-                    ListTile(
-                      leading: Icon(
-                        _estadoSolicitud == 'rechazada'
-                            ? Icons.cancel_outlined
-                            : Icons.hourglass_top_rounded,
-                        color: _estadoSolicitud == 'rechazada' ? Colors.red : Colors.orange,
-                      ),
-                      title: Text(
-                        'Estado de Validación: ${(_estadoSolicitud ?? "pendiente").toUpperCase()}',
-                      ),
-                      subtitle: Text(
-                        (_comentariosEvaluacion != null && _comentariosEvaluacion!.trim().isNotEmpty)
-                            ? 'Observaciones del administrador: $_comentariosEvaluacion'
-                            : 'Ver pantalla de estado de validación y observaciones',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () async {
-                        await context.push('/revision_local');
-                        _verificarEstadoEnBaseDeDatos();
-                      },
+      backgroundColor: AppTheme.backgroundColor,
+      body: ZelloAmbientBackground(
+        child: _cargando
+            ? const Center(child: CircularProgressIndicator())
+            : CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: ZelloHeaderBanner(
+                      eyebrow: _esSucursal ? 'ZELLO COMERCIO' : 'ZELLO',
+                      title: 'Configuración',
                     ),
-                ] else ...[
-                  ListTile(
-                    leading: const Icon(Icons.admin_panel_settings, color: Colors.green),
-                    title: const Text('Administrar mi Local'),
-                    subtitle: const Text('Edita tu cuponera y escanea QR'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      // Pasamos el ID real de la cuponera al editor mediante state.extra
-                      context.push('/editor_cuponera', extra: _cuponeraIdReal);
-                    },
                   ),
-                  ListTile(
-                    leading: const Icon(Icons.store_mall_directory_outlined, color: Colors.indigo),
-                    title: const Text('Administración de Sucursales'),
-                    subtitle: const Text('Configuración especial de sucursales y nuevas altas'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () async {
-                      await context.push('/sucursales/administracion');
-                      _verificarEstadoEnBaseDeDatos();
-                    },
-                  ),
-                  if (_tieneSolicitud && _estadoSolicitud != 'aprobada' && _estadoSolicitud != 'aprobado')
-                    ListTile(
-                      leading: Icon(
-                        _estadoSolicitud == 'rechazada'
-                            ? Icons.cancel_outlined
-                            : Icons.hourglass_top_rounded,
-                        color: _estadoSolicitud == 'rechazada' ? Colors.red : Colors.orange,
-                      ),
-                      title: Text(
-                        'Solicitud en Revisión: ${(_estadoSolicitud ?? "pendiente").toUpperCase()}',
-                      ),
-                      subtitle: Text(
-                        (_comentariosEvaluacion != null && _comentariosEvaluacion!.trim().isNotEmpty)
-                            ? 'Observaciones del administrador: $_comentariosEvaluacion'
-                            : 'Ver estado de tu nueva sucursal o cambio de nombre',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () async {
-                        await context.push('/revision_local');
-                        _verificarEstadoEnBaseDeDatos();
-                      },
-                    ),
-                ],
 
-                const SizedBox(height: 16),
-
-                // Botón del escáner (Solo visible si ya cuenta con sucursal aprobada)
-                if (_esSucursal)
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      final miUsuarioId = SesionUsuario().usuarioId;
-
-                      if (_cuponeraIdReal != null && miUsuarioId != null) {
-                        context.push(
-                          '/escaner',
-                          extra: {
-                            'cuponeraId': _cuponeraIdReal,
-                            'emisorId': miUsuarioId,
-                          },
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('No se pudieron obtener los datos de la cuponera.'),
-                            backgroundColor: Colors.red,
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(18, 22, 18, 28),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        const Padding(
+                          padding: EdgeInsets.only(left: 4, bottom: 12),
+                          child: Text(
+                            'MI CUENTA',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                              color: AppTheme.mutedSlate,
+                            ),
                           ),
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.camera_alt),
-                    label: const Text('Escanear QR de Cliente'),
+                        ),
+                        _buildOptionTile(
+                          icon: Icons.person_outline_rounded,
+                          iconColor: AppTheme.primaryColor,
+                          iconBg: AppTheme.primarySoft,
+                          title: 'Perfil de Usuario',
+                          subtitle: 'Consulta y actualiza tus datos personales',
+                          onTap: () => context.push('/perfil'),
+                        ),
+
+                        const SizedBox(height: 18),
+                        const Padding(
+                          padding: EdgeInsets.only(left: 4, bottom: 12),
+                          child: Text(
+                            'ZONA PARA COMERCIOS',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                              color: AppTheme.mutedSlate,
+                            ),
+                          ),
+                        ),
+
+                        if (!_esSucursal) ...[
+                          _buildOptionTile(
+                            icon: Icons.storefront_rounded,
+                            iconColor: AppTheme.accentColor,
+                            iconBg: AppTheme.accentSoft,
+                            title: 'Registrar mi Local',
+                            subtitle: 'Crea tu cuponera digital y fideliza clientes',
+                            onTap: () async {
+                              await context.push('/registro-negocio');
+                              _verificarEstadoEnBaseDeDatos();
+                            },
+                          ),
+                          if (_tieneSolicitud)
+                            _buildOptionTile(
+                              icon: _estadoSolicitud == 'rechazada'
+                                  ? Icons.cancel_outlined
+                                  : Icons.hourglass_top_rounded,
+                              iconColor: _estadoSolicitud == 'rechazada'
+                                  ? AppTheme.dangerColor
+                                  : AppTheme.accentColor,
+                              iconBg: _estadoSolicitud == 'rechazada'
+                                  ? AppTheme.dangerColor.withValues(alpha: 0.12)
+                                  : AppTheme.accentSoft,
+                              title:
+                                  'Estado de Validación: ${(_estadoSolicitud ?? "pendiente").toUpperCase()}',
+                              subtitle: (_comentariosEvaluacion != null &&
+                                      _comentariosEvaluacion!.trim().isNotEmpty)
+                                  ? 'Observaciones del administrador: $_comentariosEvaluacion'
+                                  : 'Ver pantalla de estado de validación y observaciones',
+                              onTap: () async {
+                                await context.push('/revision_local');
+                                _verificarEstadoEnBaseDeDatos();
+                              },
+                            ),
+                        ] else ...[
+                          _buildOptionTile(
+                            icon: Icons.auto_awesome_mosaic_rounded,
+                            iconColor: AppTheme.successColor,
+                            iconBg: AppTheme.successColor.withValues(alpha: 0.12),
+                            title: 'Administrar mi Local',
+                            subtitle: 'Personaliza el diseño de tu cuponera en el editor visual',
+                            onTap: () {
+                              context.push('/editor_cuponera', extra: _cuponeraIdReal);
+                            },
+                          ),
+                          _buildOptionTile(
+                            icon: Icons.store_mall_directory_rounded,
+                            iconColor: AppTheme.primaryColor,
+                            iconBg: AppTheme.primarySoft,
+                            title: 'Administración de Sucursales',
+                            subtitle: 'Sube tu logo, solicita cambio de nombre o da de alta otra sucursal',
+                            onTap: () async {
+                              await context.push('/sucursales/administracion');
+                              _verificarEstadoEnBaseDeDatos();
+                            },
+                          ),
+                          if (_tieneSolicitud &&
+                              _estadoSolicitud != 'aprobada' &&
+                              _estadoSolicitud != 'aprobado')
+                            _buildOptionTile(
+                              icon: _estadoSolicitud == 'rechazada'
+                                  ? Icons.cancel_outlined
+                                  : Icons.hourglass_top_rounded,
+                              iconColor: _estadoSolicitud == 'rechazada'
+                                  ? AppTheme.dangerColor
+                                  : AppTheme.accentColor,
+                              iconBg: _estadoSolicitud == 'rechazada'
+                                  ? AppTheme.dangerColor.withValues(alpha: 0.12)
+                                  : AppTheme.accentSoft,
+                              title:
+                                  'Solicitud en Revisión: ${(_estadoSolicitud ?? "pendiente").toUpperCase()}',
+                              subtitle: (_comentariosEvaluacion != null &&
+                                      _comentariosEvaluacion!.trim().isNotEmpty)
+                                  ? 'Observaciones del administrador: $_comentariosEvaluacion'
+                                  : 'Ver estado de tu nueva sucursal o cambio de nombre',
+                              onTap: () async {
+                                await context.push('/revision_local');
+                                _verificarEstadoEnBaseDeDatos();
+                              },
+                            ),
+                        ],
+
+                        if (_esSucursal) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: AppTheme.brandGradient,
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.primaryColor.withValues(alpha: 0.28),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                final miUsuarioId = SesionUsuario().usuarioId;
+                                if (_cuponeraIdReal != null && miUsuarioId != null) {
+                                  context.push(
+                                    '/escaner',
+                                    extra: {
+                                      'cuponeraId': _cuponeraIdReal,
+                                      'emisorId': miUsuarioId,
+                                    },
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'No se pudieron obtener los datos de la cuponera.',
+                                      ),
+                                      backgroundColor: AppTheme.dangerColor,
+                                    ),
+                                  );
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                              ),
+                              icon: const Icon(
+                                Icons.qr_code_scanner_rounded,
+                                color: AppTheme.accentBright,
+                              ),
+                              label: const Text(
+                                'Escanear QR de Cliente',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+
+                        const SizedBox(height: 24),
+                        _buildOptionTile(
+                          icon: Icons.logout_rounded,
+                          iconColor: AppTheme.dangerColor,
+                          iconBg: AppTheme.dangerColor.withValues(alpha: 0.12),
+                          title: 'Cerrar Sesión',
+                          subtitle: 'Salir de tu cuenta en este dispositivo',
+                          onTap: () async {
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.clear();
+                            SesionUsuario().usuarioId = null;
+                            SesionUsuario().rol = null;
+                            if (context.mounted) context.go('/login');
+                          },
+                        ),
+                      ]),
+                    ),
                   ),
-
-                const Divider(height: 32),
-
-                ListTile(
-                  leading: const Icon(Icons.logout, color: Colors.red),
-                  title: const Text('Cerrar Sesión', style: TextStyle(color: Colors.red)),
-                  onTap: () async {
-                    final prefs = await SharedPreferences.getInstance();
-                    await prefs.clear();
-                    SesionUsuario().usuarioId = null;
-                    SesionUsuario().rol = null;
-                    if (context.mounted) context.go('/login');
-                  },
-                ),
-              ],
-            ),
+                ],
+              ),
+      ),
     );
   }
 }
