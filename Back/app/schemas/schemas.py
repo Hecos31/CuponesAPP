@@ -54,6 +54,11 @@ class CrearSolicitudRequest(BaseModel):
     usuario_id: str
     nombre_negocio: str
     documentos_url: Optional[str] = None
+    direccion: Optional[str] = None
+    nombre_solicitante: Optional[str] = None
+    tipo_solicitud: Optional[str] = "ALTA_SUCURSAL"  # ALTA_SUCURSAL | CAMBIO_NOMBRE
+    establecimiento_id: Optional[str] = None
+    nombre_anterior: Optional[str] = None
 
 class SolicitudResponse(BaseModel):
     id: str
@@ -62,6 +67,14 @@ class SolicitudResponse(BaseModel):
     documentos_url: Optional[str] = None
     estado: str
     fecha_solicitud: datetime
+    usuario_email: Optional[str] = None
+    direccion: Optional[str] = None
+    nombre_solicitante: Optional[str] = None
+    comentarios_evaluacion: Optional[str] = None
+    fecha_evaluacion: Optional[str] = None
+    tipo_solicitud: Optional[str] = "ALTA_SUCURSAL"
+    establecimiento_id: Optional[str] = None
+    nombre_anterior: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -74,6 +87,9 @@ class EstablecimientoResponse(BaseModel):
     logo_url: Optional[str] = None
     activo: bool
     fecha_creacion: datetime
+    requiere_aprobacion_nombre: bool = False
+    solicitud_id: Optional[str] = None
+    mensaje: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -83,6 +99,12 @@ class EstadoSucursalResponse(BaseModel):
     rol: str
     establecimiento: Optional[EstablecimientoResponse] = None
     cuponera_id: Optional[str] = None
+    tiene_solicitud: bool = False
+    solicitud_id: Optional[str] = None
+    estado_solicitud: Optional[str] = None
+    nombre_negocio_solicitud: Optional[str] = None
+    tipo_solicitud: Optional[str] = None
+    comentarios_evaluacion: Optional[str] = None
 
 class ConvertirLocalRequest(BaseModel):
     nombre_local: str
@@ -94,6 +116,7 @@ class SimularAltaSucursalResponse(BaseModel):
 
 class SolicitudEstablecimientoUpdateEstado(BaseModel):
     estado: str  # PENDIENTE, APROBADA, RECHAZADA
+    comentarios_evaluacion: Optional[str] = None
 
 class UploadDocumentoResponse(BaseModel):
     url: str

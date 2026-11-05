@@ -127,6 +127,8 @@ class _VerificacionIdentidadPageState extends State<VerificacionIdentidadPage> {
       }
 
       final String nombreLocal = (widget.datosRegistro?['nombreLocal'] ?? 'Mi Establecimiento').toString();
+      final String direccion = (widget.datosRegistro?['direccion'] ?? '').toString();
+      final String nombreSolicitante = (widget.datosRegistro?['nombreSolicitante'] ?? '').toString();
 
       final docsConcatenados = [
         _urlIdentificacion!,
@@ -138,6 +140,8 @@ class _VerificacionIdentidadPageState extends State<VerificacionIdentidadPage> {
         usuarioId: usuarioId,
         nombreNegocio: nombreLocal,
         documentosUrl: docsConcatenados,
+        direccion: direccion,
+        nombreSolicitante: nombreSolicitante,
       );
 
       final prefs = await SharedPreferences.getInstance();

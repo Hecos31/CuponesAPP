@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:zelloapp/core/network/api_config.dart';
 import 'package:zelloapp/core/network/sesion_usuario.dart';
 import 'package:zelloapp/features/sucursales/data/datasources/sucursales_remote_data_source.dart';
 
@@ -44,6 +45,19 @@ class _AdministracionSucursalesPageState extends State<AdministracionSucursalesP
         setState(() => _isLoadingSucursales = false);
       }
     }
+  }
+
+  String? _construirUrlLogo(String? rawUrl) {
+    if (rawUrl == null || rawUrl.trim().isEmpty) return null;
+    final trimmed = rawUrl.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    final serverRoot = ApiConfig.baseUrl.replaceAll('/api/v1', '');
+    if (trimmed.startsWith('/')) {
+      return '$serverRoot$trimmed';
+    }
+    return '$serverRoot/$trimmed';
   }
 
   @override
@@ -120,6 +134,7 @@ class _AdministracionSucursalesPageState extends State<AdministracionSucursalesP
                         separatorBuilder: (_, _) => const SizedBox(height: 12),
                         itemBuilder: (context, index) {
                           final item = _sucursales[index];
+                          final logoFullUrl = _construirUrlLogo(item.logoUrl);
                           return Card(
                             elevation: 2,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -128,10 +143,10 @@ class _AdministracionSucursalesPageState extends State<AdministracionSucursalesP
                               leading: CircleAvatar(
                                 radius: 24,
                                 backgroundColor: item.activo ? Colors.blue.shade100 : Colors.grey.shade300,
-                                backgroundImage: (item.logoUrl != null && item.logoUrl!.isNotEmpty)
-                                    ? NetworkImage(item.logoUrl!)
+                                backgroundImage: logoFullUrl != null
+                                    ? NetworkImage(logoFullUrl)
                                     : null,
-                                child: (item.logoUrl == null || item.logoUrl!.isEmpty)
+                                child: logoFullUrl == null
                                     ? Icon(Icons.store, color: item.activo ? Colors.blue.shade800 : Colors.grey)
                                     : null,
                               ),

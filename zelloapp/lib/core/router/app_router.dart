@@ -16,6 +16,14 @@ import '../../features/auth/presentation/pages/approval_status_page.dart';
 import '../../features/auth/presentation/pages/registro_negocio_page.dart';
 import '../../features/editor/presentation/pages/editor_page.dart';
 
+// --- IMPORTS DE SUCURSALES Y EVALUACIÓN ADMINISTRATIVA ---
+import '../../features/sucursales/data/datasources/sucursales_remote_data_source.dart';
+import '../../features/sucursales/presentation/pages/verificacion_identidad_page.dart';
+import '../../features/sucursales/presentation/pages/administracion_sucursales_page.dart';
+import '../../features/sucursales/presentation/pages/configuracion_sucursal_page.dart';
+import '../../features/sucursales/presentation/pages/admin_solicitudes_page.dart';
+import '../../features/sucursales/presentation/pages/admin_solicitud_detalle_page.dart';
+
 // --- IMPORTS DE CUPONERAS ---
 import '../../features/cuponeras/presentation/pages/mis_cuponeras_page.dart';
 import '../../features/cuponeras/presentation/pages/cuponera_detail_page.dart';
@@ -44,6 +52,43 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/registro-negocio',
       builder: (context, state) => const RegistroNegocioPage(),
+    ),
+
+    GoRoute(
+      path: '/sucursales/verificacion',
+      builder: (context, state) {
+        final datos = state.extra as Map<String, dynamic>?;
+        return VerificacionIdentidadPage(datosRegistro: datos);
+      },
+    ),
+
+    GoRoute(
+      path: '/sucursales/administracion',
+      builder: (context, state) => const AdministracionSucursalesPage(),
+    ),
+
+    GoRoute(
+      path: '/sucursales/configuracion',
+      builder: (context, state) {
+        final sucursal = state.extra as SucursalModel?;
+        return ConfiguracionSucursalPage(sucursal: sucursal);
+      },
+    ),
+
+    // ======================================================
+    // APARTADO EXCLUSIVO PARA EL USUARIO ADMINISTRADOR
+    // ======================================================
+    GoRoute(
+      path: '/admin/solicitudes',
+      builder: (context, state) => const AdminSolicitudesPage(),
+    ),
+
+    GoRoute(
+      path: '/admin/solicitudes/detalle',
+      builder: (context, state) {
+        final solicitud = state.extra as SolicitudModel;
+        return AdminSolicitudDetallePage(solicitud: solicitud);
+      },
     ),
 
     GoRoute(
@@ -128,7 +173,7 @@ final GoRouter appRouter = GoRouter(
             final status = prefs.getString('status_local') ?? 'pendiente';
 
             // Bloquea el acceso si el admin aún no aprueba su negocio
-            if (status == 'pendiente' || status == 'rechazado') {
+            if (status == 'pendiente' || status == 'rechazado' || status == 'rechazada') {
               return '/revision_local';
             }
             return null;

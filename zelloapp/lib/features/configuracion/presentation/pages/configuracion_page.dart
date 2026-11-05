@@ -18,6 +18,7 @@ class _ConfiguracionPageState extends State<ConfiguracionPage> {
   String? _cuponeraIdReal;
   bool _tieneSolicitud = false;
   String? _estadoSolicitud;
+  String? _comentariosEvaluacion;
 
   @override
   void initState() {
@@ -61,6 +62,7 @@ class _ConfiguracionPageState extends State<ConfiguracionPage> {
         _cuponeraIdReal = estado['cuponera_id'];
         _tieneSolicitud = estado['tiene_solicitud'] ?? false;
         _estadoSolicitud = estadoSol;
+        _comentariosEvaluacion = estado['comentarios_evaluacion']?.toString();
         if (estado['rol'] != null) {
           SesionUsuario().rol = estado['rol']; // Sincronizamos rol real
         }
@@ -126,7 +128,11 @@ class _ConfiguracionPageState extends State<ConfiguracionPage> {
                       title: Text(
                         'Estado de Validación: ${(_estadoSolicitud ?? "pendiente").toUpperCase()}',
                       ),
-                      subtitle: const Text('Ver pantalla de espera de validación de tu local'),
+                      subtitle: Text(
+                        (_comentariosEvaluacion != null && _comentariosEvaluacion!.trim().isNotEmpty)
+                            ? 'Observaciones del administrador: $_comentariosEvaluacion'
+                            : 'Ver pantalla de estado de validación y observaciones',
+                      ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () async {
                         await context.push('/revision_local');
@@ -154,6 +160,28 @@ class _ConfiguracionPageState extends State<ConfiguracionPage> {
                       _verificarEstadoEnBaseDeDatos();
                     },
                   ),
+                  if (_tieneSolicitud && _estadoSolicitud != 'aprobada' && _estadoSolicitud != 'aprobado')
+                    ListTile(
+                      leading: Icon(
+                        _estadoSolicitud == 'rechazada'
+                            ? Icons.cancel_outlined
+                            : Icons.hourglass_top_rounded,
+                        color: _estadoSolicitud == 'rechazada' ? Colors.red : Colors.orange,
+                      ),
+                      title: Text(
+                        'Solicitud en Revisión: ${(_estadoSolicitud ?? "pendiente").toUpperCase()}',
+                      ),
+                      subtitle: Text(
+                        (_comentariosEvaluacion != null && _comentariosEvaluacion!.trim().isNotEmpty)
+                            ? 'Observaciones del administrador: $_comentariosEvaluacion'
+                            : 'Ver estado de tu nueva sucursal o cambio de nombre',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () async {
+                        await context.push('/revision_local');
+                        _verificarEstadoEnBaseDeDatos();
+                      },
+                    ),
                 ],
 
                 const SizedBox(height: 16),
