@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../../../../core/network/api_config.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:zelloapp/core/network/api_config.dart';
+import 'package:zelloapp/core/theme/app_theme.dart';
+import 'package:zelloapp/core/widgets/zello_logo.dart';
 
 import '../../models/cuponera_lista_model.dart';
 import '../../services/cuponeras_service.dart';
@@ -31,7 +33,6 @@ class _CuponerasListPageState extends State<CuponerasListPage> {
     });
   }
 
-  // 🎟️ Función para suscribirse y refrescar el feed automáticamente
   Future<void> _unirseCuponera(String cuponeraId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -43,7 +44,7 @@ class _CuponerasListPageState extends State<CuponerasListPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Por favor, inicia sesión para unirte.'),
-            backgroundColor: Colors.orange,
+            backgroundColor: AppTheme.accentColor,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -78,17 +79,16 @@ class _CuponerasListPageState extends State<CuponerasListPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(data['mensaje'] ?? '¡Te has suscrito exitosamente!'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppTheme.successColor,
             behavior: SnackBarBehavior.floating,
           ),
         );
-        // 🔑 RECARGAMOS EL FEED PARA QUE LA CUPONERA SUSCRITA DESAPAREZCA DE INMEDIATO
         _cargarCuponeras();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(data['detail'] ?? 'Error al suscribirse'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.dangerColor,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -99,7 +99,7 @@ class _CuponerasListPageState extends State<CuponerasListPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error de conexión: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.dangerColor,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -109,70 +109,154 @@ class _CuponerasListPageState extends State<CuponerasListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      appBar: AppBar(
-        title: const Text('Descubrir Cuponeras'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Actualizar',
-            onPressed: _cargarCuponeras,
-          ),
-        ],
-        elevation: 0,
-      ),
-      body: FutureBuilder<List<CuponeraListaModel>>(
-        future: _futureCuponeras,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Text(
-                  'No se pudieron cargar las cuponeras.\nVerifica tu conexión.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey.shade600),
+      backgroundColor: AppTheme.backgroundColor,
+      body: ZelloAmbientBackground(
+        child: CustomScrollView(
+          slivers: [
+            // Encabezado moderno Zello con gradiente y logo SVG oficial
+            SliverToBoxAdapter(
+              child: ZelloHeaderBanner(
+                eyebrow: 'ZELLO',
+                title: 'Descubre Cuponeras',
+                trailing: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.18),
+                    ),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+                    tooltip: 'Actualizar',
+                    onPressed: _cargarCuponeras,
+                  ),
+                ),
+                bottomChild: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.16),
+                    ),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.auto_awesome_rounded,
+                        color: AppTheme.accentBright,
+                        size: 24,
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Únete a tus comercios favoritos, acumula sellos digitales y desbloquea beneficios exclusivos.',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12.5,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            );
-          }
+            ),
 
-          final cuponeras = snapshot.data ?? [];
+            // Contenido dinámico de cuponeras
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(18, 22, 18, 28),
+              sliver: FutureBuilder<List<CuponeraListaModel>>(
+                future: _futureCuponeras,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
 
-          if (cuponeras.isEmpty) {
-            return const Center(
-              child: Text('No hay cuponeras disponibles por el momento.'),
-            );
-          }
+                  if (snapshot.hasError) {
+                    return SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.cloud_off_rounded,
+                                size: 56,
+                                color: AppTheme.mutedSlate.withValues(alpha: 0.5),
+                              ),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'No se pudieron cargar las cuponeras.\nVerifica tu conexión.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: AppTheme.mutedSlate),
+                              ),
+                              const SizedBox(height: 16),
+                              OutlinedButton.icon(
+                                onPressed: _cargarCuponeras,
+                                icon: const Icon(Icons.refresh_rounded),
+                                label: const Text('Reintentar'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: cuponeras.length,
-            itemBuilder: (context, index) {
-              final cuponera = cuponeras[index];
-              return _CuponeraCardReal(
-                cuponera: cuponera,
-                onTapCard: () {
-                  final Map<String, dynamic> cuponeraMap = {
-                    'id': cuponera.id,
-                    'establecimiento_nombre': cuponera.establecimientoNombre,
-                    'titulo_cuponera': cuponera.titulo,
-                    'descripcion_premio': cuponera.descripcionPremio,
-                    'total_sellos_requeridos': cuponera.totalSellosRequeridos,
-                    // 🔑 ENVIAMOS EL DISEÑO COMPLETO PARA QUE EL DETALLE LO PROCESE PERFECTAMENTE
-                    'configuracion_ui': cuponera.diseno,
-                  };
-                  context.push('/cuponeras/detalle', extra: cuponeraMap);
+                  final cuponeras = snapshot.data ?? [];
+
+                  if (cuponeras.isEmpty) {
+                    return const SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: Text(
+                          'No hay cuponeras disponibles por el momento.',
+                          style: TextStyle(
+                            color: AppTheme.mutedSlate,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  return SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final cuponera = cuponeras[index];
+                        return _CuponeraCardReal(
+                          cuponera: cuponera,
+                          onTapCard: () {
+                            final Map<String, dynamic> cuponeraMap = {
+                              'id': cuponera.id,
+                              'establecimiento_nombre': cuponera.establecimientoNombre,
+                              'titulo_cuponera': cuponera.titulo,
+                              'descripcion_premio': cuponera.descripcionPremio,
+                              'total_sellos_requeridos': cuponera.totalSellosRequeridos,
+                              'configuracion_ui': cuponera.diseno,
+                            };
+                            context.push('/cuponeras/detalle', extra: cuponeraMap);
+                          },
+                          onTapUnirse: () => _unirseCuponera(cuponera.id),
+                        );
+                      },
+                      childCount: cuponeras.length,
+                    ),
+                  );
                 },
-                onTapUnirse: () => _unirseCuponera(cuponera.id),
-              );
-            },
-          );
-        },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -191,96 +275,213 @@ class _CuponeraCardReal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(
-        onTap: onTapCard,
-        child: SizedBox(
-          height: 135,
-          child: Row(
-            children: [
-              Expanded(
-                flex: 6,
-                child: Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: AppTheme.primaryColor.withValues(alpha: 0.08),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryDeep.withValues(alpha: 0.09),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTapCard,
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Lado izquierdo: Información del comercio y botón de suscripción
+                  Expanded(
+                    flex: 7,
+                    child: Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            cuponera.establecimientoNombre,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primarySoft,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      '${cuponera.totalSellosRequeridos} SELLOS',
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppTheme.primaryColor,
+                                        letterSpacing: 0.6,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                cuponera.establecimientoNombre,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.darkInk,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                cuponera.titulo,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.primaryColor,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.redeem_rounded,
+                                    size: 15,
+                                    color: AppTheme.accentColor,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Expanded(
+                                    child: Text(
+                                      cuponera.descripcionPremio,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.mutedSlate,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            cuponera.titulo,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.blue.shade700,
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            height: 40,
+                            width: double.infinity,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: AppTheme.brandGradient,
+                                borderRadius: BorderRadius.circular(13),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppTheme.primaryColor.withValues(alpha: 0.25),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: ElevatedButton.icon(
+                                onPressed: onTapUnirse,
+                                icon: const Icon(
+                                  Icons.add_circle_outline_rounded,
+                                  size: 17,
+                                  color: AppTheme.accentBright,
+                                ),
+                                label: const Text(
+                                  'Quiero esta cuponera',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  shadowColor: Colors.transparent,
+                                  padding: EdgeInsets.zero,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(13),
+                                  ),
+                                ),
+                              ),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Premio: ${cuponera.descripcionPremio}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
-                      SizedBox(
-                        height: 32,
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: onTapUnirse,
-                          icon: const Icon(Icons.add, size: 16),
-                          label: const Text(
-                            'Quiero esta cuponera',
-                            style: TextStyle(fontSize: 11),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Expanded(
-                flex: 3,
-                child: Container(
-                  color: const Color(0xFF374151),
-                  child: const Center(
-                    child: Icon(
-                      Icons.confirmation_num_rounded,
-                      color: Colors.amberAccent,
-                      size: 42,
                     ),
                   ),
-                ),
+
+                  // Talón derecho estilo boleto Zello
+                  Expanded(
+                    flex: 3,
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        gradient: AppTheme.brandGradient,
+                      ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Positioned(
+                            right: -20,
+                            bottom: -20,
+                            child: Icon(
+                              Icons.confirmation_num_rounded,
+                              size: 90,
+                              color: Colors.white.withValues(alpha: 0.08),
+                            ),
+                          ),
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.14),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.confirmation_num_rounded,
+                                  color: AppTheme.accentBright,
+                                  size: 30,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              const Text(
+                                'VER CUPÓN',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
