@@ -34,9 +34,11 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = true);
 
     try {
+      debugPrint('Paso 1: Iniciando petición de login');
       final baseUrl = ApiConfig.baseUrl;
       final url = Uri.parse('$baseUrl/auth/login');
 
+     debugPrint('Paso 2: Enviando datos a $url');
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
@@ -44,11 +46,13 @@ class _LoginPageState extends State<LoginPage> {
           'email': _emailController.text.trim(),
           'password': _passwordController.text,
         }),
-      );
+      ).timeout(const Duration(seconds: 10)); // <--- ¡AGREGA ESTO AQUÍ!
 
-      final data = jsonDecode(response.body);
+      debugPrint('Paso 3: Respuesta del servidor -> StatusCode: ${response.statusCode}');
 
+      // Corregido: Solo decodificamos si la respuesta es exitosa (200) para evitar colapsos por HTML/Texto plano
       if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
         final prefs = await SharedPreferences.getInstance();
         
         // 1. Guardamos el token de autenticación
@@ -61,13 +65,13 @@ class _LoginPageState extends State<LoginPage> {
         final usuarioId = usuarioData != null ? usuarioData['id'] : (data['id'] ?? '');
         final rol = usuarioData != null ? usuarioData['rol'] : 'cliente';
 
-        // 3. Guardamos el ID en SharedPreferences (vital para las suscripciones a cuponeras)
-        if (usuarioId.isNotEmpty) {
-          await prefs.setString('usuario_id', usuarioId);
+        // 3. Guardamos el ID en SharedPreferences
+        if (usuarioId.toString().isNotEmpty) {
+          await prefs.setString('usuario_id', usuarioId.toString());
         }
 
         // 4. Actualizamos la sesión global en memoria
-        SesionUsuario().usuarioId = usuarioId;
+        SesionUsuario().usuarioId = usuarioId.toString();
         SesionUsuario().rol = rol;
 
         // 5. Validamos flujos según el rol del usuario
@@ -79,15 +83,24 @@ class _LoginPageState extends State<LoginPage> {
         }
 
         if (mounted) {
-          // Redirigimos al feed general de cuponeras públicas
+          debugPrint('Paso 4: Login exitoso, redirigiendo...');
           context.go('/descubrir'); 
         }
       } else {
-        final message = data['detail'] ?? 'Credenciales incorrectas';
-        throw Exception(message);
+        // Manejo seguro de errores del backend (401, 404, 422, etc.)
+        String errorMessage = 'Error al iniciar sesión';
+        try {
+          final errorData = jsonDecode(response.body);
+          errorMessage = errorData['detail'] ?? 'Credenciales incorrectas';
+        } catch (_) {
+          errorMessage = 'Error de conexión o servidor inalcanzable (Código: ${response.statusCode})';
+        }
+        throw Exception(errorMessage);
       }
     } catch (e) {
+      debugPrint('Paso ERROR: Hubo una falla -> $e');
       if (mounted) {
+        // Limpiamos el texto de la excepción para que el usuario vea un mensaje limpio
         final cleanError = e.toString().replaceAll('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -99,6 +112,7 @@ class _LoginPageState extends State<LoginPage> {
       }
     } finally {
       if (mounted) {
+        debugPrint('Paso Final: Apagando estado de carga');
         setState(() => _isLoading = false);
       }
     }

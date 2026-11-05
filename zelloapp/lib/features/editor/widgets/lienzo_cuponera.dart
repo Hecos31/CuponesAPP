@@ -3,7 +3,7 @@ import '../models/diseno_lienzo.dart';
 import '../models/elemento_diseno.dart';
 import 'elemento_vista.dart';
 
-class LienzoCuponera extends StatelessWidget {
+class LienzoCuponera extends StatefulWidget {
   const LienzoCuponera({
     super.key,
     required this.diseno,
@@ -12,7 +12,7 @@ class LienzoCuponera extends StatelessWidget {
     required this.alCambiar,
     required this.alAbrirEditor,
     required this.mostrarCuadricula,
-    required this.imanActivado, // <-- Nuevo parámetro
+    required this.imanActivado,
   });
 
   final DisenoLienzo diseno;
@@ -23,7 +23,12 @@ class LienzoCuponera extends StatelessWidget {
   final bool mostrarCuadricula;
   final bool imanActivado;
 
-  static const double _tamanoMinimo = 30; // Evita que se hagan invisibles
+  @override
+  State<LienzoCuponera> createState() => _LienzoCuponeraState();
+}
+
+class _LienzoCuponeraState extends State<LienzoCuponera> {
+  static const double _tamanoMinimo = 25;
 
   @override
   Widget build(BuildContext context) {
@@ -34,19 +39,25 @@ class LienzoCuponera extends StatelessWidget {
         final altoLienzo = DisenoLienzo.alto * escala;
 
         return GestureDetector(
-          onTap: () => alSeleccionar(null),
+          onTap: () => widget.alSeleccionar(null),
           child: Container(
             width: anchoLienzo,
             height: altoLienzo,
-            clipBehavior: Clip.hardEdge, 
-            decoration: BoxDecoration(color: diseno.fondo, border: Border.all(color: Colors.grey.shade300)),
+            clipBehavior: Clip.hardEdge,
+            decoration: BoxDecoration(
+              color: widget.diseno.fondo,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20)
+              ]
+            ),
             child: CustomPaint(
-              foregroundPainter: mostrarCuadricula ? _CuadriculaPainter() : null,
+              foregroundPainter: widget.mostrarCuadricula ? _CuadriculaPainter() : null,
               child: Stack(
-                clipBehavior: Clip.hardEdge,
+                clipBehavior: Clip.none,
                 children: [
-                  for (final e in diseno.elementos)
-                    _elementoEnLienzo(e, escala, anchoLienzo, altoLienzo),
+                  for (final e in widget.diseno.elementos)
+                    _elementoEnLienzo(e, escala, anchoLienzo, altoLienzo)
                 ],
               ),
             ),
@@ -57,7 +68,7 @@ class LienzoCuponera extends StatelessWidget {
   }
 
   Widget _elementoEnLienzo(ElementoDiseno e, double escala, double anchoLienzo, double altoLienzo) {
-    final seleccionado = e.id == seleccionadoId;
+    final seleccionado = e.id == widget.seleccionadoId;
 
     return Positioned(
       left: e.x * escala,
@@ -65,21 +76,27 @@ class LienzoCuponera extends StatelessWidget {
       width: e.ancho * escala,
       height: e.alto * escala,
       child: GestureDetector(
-        onTap: () => alSeleccionar(e.id),
-        onPanStart: (_) => alSeleccionar(e.id),
+        onTap: () => widget.alSeleccionar(e.id),
+        onPanStart: (_) => widget.alSeleccionar(e.id),
         onPanUpdate: (detalles) {
           double nuevaX = e.x + detalles.delta.dx / escala;
           double nuevaY = e.y + detalles.delta.dy / escala;
 
-          // LÓGICA DEL IMÁN (Snap to grid de 20px)
-          if (imanActivado) {
-            nuevaX = (nuevaX / 20).round() * 20.0;
-            nuevaY = (nuevaY / 20).round() * 20.0;
+          if (widget.imanActivado) {
+            nuevaX = (nuevaX / 15).round() * 15.0;
+            nuevaY = (nuevaY / 15).round() * 15.0;
           }
 
-          e.x = nuevaX.clamp(-e.ancho / 2, DisenoLienzo.ancho - e.ancho / 2);
-          e.y = nuevaY.clamp(-e.alto / 2, DisenoLienzo.alto - e.alto / 2);
-          alCambiar();
+          // 🟢 SOLUCIÓN MATEMÁTICA: Límites estrictos para que nunca salgan del lienzo
+          e.x = nuevaX.clamp(0.0, DisenoLienzo.ancho - e.ancho);
+          e.y = nuevaY.clamp(0.0, DisenoLienzo.alto - e.alto);
+
+          // 🟢 SOLUCIÓN RENDIMIENTO: Solo redibuja el lienzo localmente. (Adiós al lag)
+          setState(() {});
+        },
+        onPanEnd: (_) {
+          // Solo notificamos a la pantalla principal cuando el usuario SUELTA el objeto
+          widget.alCambiar();
         },
         child: Stack(
           clipBehavior: Clip.none,
@@ -89,45 +106,53 @@ class LienzoCuponera extends StatelessWidget {
               Positioned.fill(
                 child: IgnorePointer(
                   child: DecoratedBox(
-                    decoration: BoxDecoration(border: Border.all(color: Colors.blueAccent, width: 2)),
-                  ),
-                ),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.blueAccent, width: 2.5),
+                      borderRadius: BorderRadius.circular(4)
+                    )
+                  )
+                )
               ),
-              // BOTÓN EDITAR MÁS GRANDE
               Positioned(
-                left: -16, top: -16,
+                left: -12,
+                top: -12,
                 child: GestureDetector(
-                  onTap: () => alAbrirEditor(e.id),
+                  onTap: () => widget.alAbrirEditor(e.id),
                   child: Container(
-                    padding: const EdgeInsets.all(10), // Más área táctil
-                    decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)]),
-                    child: const Icon(Icons.edit, color: Colors.white, size: 22),
-                  ),
-                ),
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)]),
+                    child: const Icon(Icons.edit, color: Colors.blueAccent, size: 18)
+                  )
+                )
               ),
-              // BOTÓN REDIMENSIONAR MÁS GRANDE Y CON ICONO
               Positioned(
-                right: -16, bottom: -16,
+                right: -12,
+                bottom: -12,
                 child: GestureDetector(
-                  onPanUpdate: (detalles) {
-                    double nuevoAncho = e.ancho + detalles.delta.dx / escala;
-                    double nuevoAlto = e.alto + detalles.delta.dy / escala;
+                  onPanUpdate: (d) {
+                    double nA = e.ancho + d.delta.dx / escala;
+                    double nAlt = e.alto + d.delta.dy / escala;
                     
-                    if (imanActivado) {
-                      nuevoAncho = (nuevoAncho / 20).round() * 20.0;
-                      nuevoAlto = (nuevoAlto / 20).round() * 20.0;
+                    if (widget.imanActivado) {
+                      nA = (nA / 15).round() * 15.0;
+                      nAlt = (nAlt / 15).round() * 15.0;
                     }
+
+                    // Limitar crecimiento para que no desborde la pantalla
+                    double maxAncho = DisenoLienzo.ancho - e.x;
+                    double maxAlto = DisenoLienzo.alto - e.y;
+
+                    e.ancho = nA.clamp(_tamanoMinimo, maxAncho);
+                    e.alto = nAlt.clamp(_tamanoMinimo, maxAlto);
                     
-                    e.ancho = nuevoAncho.clamp(_tamanoMinimo, DisenoLienzo.ancho * 2);
-                    e.alto = nuevoAlto.clamp(_tamanoMinimo, DisenoLienzo.alto * 2);
-                    alCambiar();
+                    setState(() {});
                   },
+                  onPanEnd: (_) => widget.alCambiar(),
                   child: Container(
-                    width: 34, height: 34,
-                    decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: Colors.blue, width: 2), boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)]),
-                    child: const Icon(Icons.open_in_full, size: 16, color: Colors.blue),
-                  ),
-                ),
+                    width: 28, height: 28,
+                    decoration: BoxDecoration(color: Colors.blueAccent, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 3), boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)])
+                  )
+                )
               ),
             ],
           ],
@@ -140,9 +165,9 @@ class LienzoCuponera extends StatelessWidget {
 class _CuadriculaPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.grey.withOpacity(0.4)..strokeWidth = 1;
-    for (double i = 0; i < size.width; i += 20) canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
-    for (double i = 0; i < size.height; i += 20) canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
+    final paint = Paint()..color = Colors.blue.withOpacity(0.15)..strokeWidth = 1;
+    for (double i = 0; i < size.width; i += 15) canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
+    for (double i = 0; i < size.height; i += 15) canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
   }
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
