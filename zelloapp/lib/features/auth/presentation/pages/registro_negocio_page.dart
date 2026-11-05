@@ -1,9 +1,7 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../../core/network/api_config.dart';
+import 'package:zelloapp/core/network/sesion_usuario.dart';
 
 class RegistroNegocioPage extends StatefulWidget {
   const RegistroNegocioPage({super.key});
@@ -14,62 +12,59 @@ class RegistroNegocioPage extends StatefulWidget {
 
 class _RegistroNegocioPageState extends State<RegistroNegocioPage> {
   final _formKey = GlobalKey<FormState>();
-  final _nombreController = TextEditingController();
-  bool _isLoading = false;
-  bool _documentoCargado = false;
+  final _nombreLocalController = TextEditingController();
+  final _direccionController = TextEditingController();
+  final _nombreDuenoController = TextEditingController();
 
-  Future<void> _simularCargaDocumento() async {
-    setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
-    setState(() {
-      _isLoading = false;
-      _documentoCargado = true;
-    });
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _nombreLocalController.dispose();
+    _direccionController.dispose();
+    _nombreDuenoController.dispose();
+    super.dispose();
   }
 
-  Future<void> _enviarSolicitud() async {
+  Future<void> _continuarASubidaDocumentos() async {
     if (!_formKey.currentState!.validate()) return;
-    if (!_documentoCargado) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Debes adjuntar tus documentos de validación')),
-      );
-      return;
-    }
 
     setState(() => _isLoading = true);
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final usuarioId = prefs.getString('usuario_id');
-      final token = prefs.getString('token');
-
-      if (usuarioId == null) throw Exception("No hay sesión activa");
-
-      final url = Uri.parse('${ApiConfig.baseUrl}/establecimientos/solicitudes');
-      
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          'usuario_id': usuarioId,
-          'nombre_negocio': _nombreController.text.trim(),
-        }),
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        await prefs.setString('status_local', 'pendiente');
-        if (mounted) context.go('/revision_local');
-      } else {
-        final errorData = jsonDecode(response.body);
-        throw Exception(errorData['detail'] ?? 'Error al enviar solicitud');
+      // Obtenemos el ID del solicitante directamente del inicio de sesión (sin mostrarlo en pantalla)
+      String? usuarioId = SesionUsuario().usuarioId;
+      if (usuarioId == null || usuarioId.isEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        usuarioId = prefs.getString('usuario_id');
+        if (usuarioId != null && usuarioId.isNotEmpty) {
+          SesionUsuario().usuarioId = usuarioId;
+        }
       }
+
+      if (usuarioId == null || usuarioId.isEmpty) {
+        throw Exception('No se encontró una sesión activa. Por favor inicia sesión de nuevo.');
+      }
+
+      if (!mounted) return;
+
+      // Enviamos los datos capturados a la vista maquetada de Verificación de Identidad (subida de documentos)
+      context.push(
+        '/sucursales/verificacion',
+        extra: {
+          'usuarioId': usuarioId,
+          'nombreLocal': _nombreLocalController.text.trim(),
+          'direccion': _direccionController.text.trim(),
+          'nombreSolicitante': _nombreDuenoController.text.trim(),
+        },
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -80,7 +75,9 @@ class _RegistroNegocioPageState extends State<RegistroNegocioPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Registrar mi Local')),
+      appBar: AppBar(
+        title: const Text('Registrar mi Local'),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -89,47 +86,87 @@ class _RegistroNegocioPageState extends State<RegistroNegocioPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(Icons.store, size: 64, color: Colors.blue),
+                const Icon(Icons.storefront_rounded, size: 68, color: Colors.blue),
                 const SizedBox(height: 16),
-                const Text('Únete a nuestra red', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                const Text(
+                  'Datos de tu Establecimiento',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 8),
-                const Text('Para proteger a nuestros usuarios, necesitamos validar la identidad de tu negocio.', textAlign: TextAlign.center),
+                const Text(
+                  'Ingresa la información de tu local y del propietario para continuar con la verificación de identidad y subida de documentos.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.black54, fontSize: 14),
+                ),
                 const SizedBox(height: 32),
+
+                // 1. Nombre del Local
                 TextFormField(
-                  controller: _nombreController,
-                  decoration: const InputDecoration(labelText: 'Nombre Comercial del Negocio', border: OutlineInputBorder()),
-                  validator: (value) => value!.isEmpty ? 'Requerido' : null,
+                  controller: _nombreLocalController,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre del Local o Establecimiento *',
+                    hintText: 'Ej. Cafetería Central',
+                    prefixIcon: Icon(Icons.store_outlined),
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) => (value == null || value.trim().isEmpty)
+                      ? 'Ingresa el nombre del local'
+                      : null,
                 ),
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade400),
-                    borderRadius: BorderRadius.circular(8),
+                const SizedBox(height: 20),
+
+                // 2. Dirección del Local
+                TextFormField(
+                  controller: _direccionController,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: 'Dirección del Local *',
+                    hintText: 'Calle, Número, Colonia, Ciudad y C.P.',
+                    prefixIcon: Icon(Icons.location_on_outlined),
+                    border: OutlineInputBorder(),
                   ),
-                  child: Column(
-                    children: [
-                      const Text('Sube tu Identificación Oficial y Comprobante (PDF/JPG)', textAlign: TextAlign.center),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: _documentoCargado ? null : _simularCargaDocumento,
-                        icon: Icon(_documentoCargado ? Icons.check_circle : Icons.upload_file),
-                        label: Text(_documentoCargado ? 'Documentos Adjuntos' : 'Adjuntar Archivos'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _documentoCargado ? Colors.green : Colors.blue,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ],
+                  validator: (value) => (value == null || value.trim().isEmpty)
+                      ? 'Ingresa la dirección del local'
+                      : null,
+                ),
+                const SizedBox(height: 20),
+
+                // 3. Nombre completo del solicitante o dueño
+                TextFormField(
+                  controller: _nombreDuenoController,
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) => _continuarASubidaDocumentos(),
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre Completo del Solicitante o Dueño *',
+                    hintText: 'Ej. Juan Pérez García',
+                    prefixIcon: Icon(Icons.person_outline),
+                    border: OutlineInputBorder(),
                   ),
+                  validator: (value) => (value == null || value.trim().isEmpty)
+                      ? 'Ingresa el nombre completo del solicitante o dueño'
+                      : null,
                 ),
                 const SizedBox(height: 32),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _enviarSolicitud,
-                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
-                  child: _isLoading 
-                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Enviar Solicitud a Revisión', style: TextStyle(fontSize: 16)),
+
+                ElevatedButton.icon(
+                  onPressed: _isLoading ? null : _continuarASubidaDocumentos,
+                  icon: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        )
+                      : const Icon(Icons.arrow_forward),
+                  label: const Text(
+                    'Continuar a Verificación de Identidad',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
                 ),
               ],
             ),

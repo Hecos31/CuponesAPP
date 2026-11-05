@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../../core/network/api_config.dart';
-import '../../../../core/network/sesion_usuario.dart';
+import 'package:zelloapp/core/network/api_config.dart';
+import 'package:zelloapp/core/network/sesion_usuario.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -59,18 +59,30 @@ class _LoginPageState extends State<LoginPage> {
         // 2. Extraemos los datos del usuario de forma segura
         final usuarioData = data['usuario'];
         final usuarioId = usuarioData != null ? usuarioData['id'] : (data['id'] ?? '');
-        final rol = usuarioData != null ? usuarioData['rol'] : 'cliente';
+        final rol = (usuarioData != null ? usuarioData['rol'] : 'cliente')
+            .toString()
+            .toLowerCase();
 
-        // 3. Guardamos el ID en SharedPreferences (vital para las suscripciones a cuponeras)
+        // 3. Guardamos el ID y el rol en SharedPreferences
         if (usuarioId.isNotEmpty) {
           await prefs.setString('usuario_id', usuarioId);
         }
+        await prefs.setString('rol_usuario', rol);
 
         // 4. Actualizamos la sesión global en memoria
         SesionUsuario().usuarioId = usuarioId;
         SesionUsuario().rol = rol;
 
         // 5. Validamos flujos según el rol del usuario
+        if (rol == 'admin') {
+          await prefs.setBool('is_establecimiento', false);
+          if (mounted) {
+            // El usuario exclusivo administrador entra directamente al panel de evaluación de solicitudes
+            context.go('/admin/solicitudes');
+          }
+          return;
+        }
+
         if (rol == 'propietario') {
           await prefs.setBool('is_establecimiento', true);
           await prefs.setString('status_local', 'aprobado');

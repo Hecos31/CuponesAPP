@@ -271,9 +271,39 @@ def obtener_estado_sucursal(usuario_id: str, db: Session = Depends(get_db)):
         if cuponera:
             cuponera_id = cuponera.id
 
+    from app.models.models import SolicitudEstablecimiento
+    from app.api.endpoints.solicitudes import cargar_metadata_solicitudes
+
+    ultima_solicitud = (
+        db.query(SolicitudEstablecimiento)
+        .filter(SolicitudEstablecimiento.usuario_id == usuario.id)
+        .order_by(SolicitudEstablecimiento.fecha_solicitud.desc())
+        .first()
+    )
+    estado_solicitud = None
+    comentarios_evaluacion = None
+    nombre_negocio_solicitud = None
+    tipo_solicitud = None
+    if ultima_solicitud:
+        estado_solicitud = (
+            ultima_solicitud.estado.value
+            if hasattr(ultima_solicitud.estado, "value")
+            else str(ultima_solicitud.estado)
+        )
+        nombre_negocio_solicitud = ultima_solicitud.nombre_negocio
+        meta = cargar_metadata_solicitudes().get(ultima_solicitud.id, {})
+        comentarios_evaluacion = meta.get("comentarios_evaluacion")
+        tipo_solicitud = meta.get("tipo_solicitud") or "ALTA_SUCURSAL"
+
     return {
         "rol": usuario.rol,
         "es_sucursal": establecimiento is not None,
         "establecimiento_id": establecimiento.id if establecimiento else None,
-        "cuponera_id": cuponera_id
+        "cuponera_id": cuponera_id,
+        "tiene_solicitud": ultima_solicitud is not None,
+        "solicitud_id": ultima_solicitud.id if ultima_solicitud else None,
+        "estado_solicitud": estado_solicitud,
+        "nombre_negocio_solicitud": nombre_negocio_solicitud,
+        "tipo_solicitud": tipo_solicitud,
+        "comentarios_evaluacion": comentarios_evaluacion,
     }
